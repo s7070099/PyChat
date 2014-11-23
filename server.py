@@ -2,13 +2,19 @@ from socket import *
 from thread import *
 from time import *
 
-HOST = '192.168.100.60'
-PORT = 50037
-MAX_USER = 4
+HOST = '192.168.100.70'
+PORT = 50035
+MAX_USER = 200
 
 class User(object):
     used = 0
     name = ""
+    room = 0
+
+class Room(object):
+    used = 0
+    name = ""
+    max_user = 4
 
 user = list()
 for i in xrange(MAX_USER):
@@ -34,7 +40,7 @@ def response(conn):
     state = 0
     while 1:
         print "Wait.."
-        data = conn.recv(1024)
+        data = conn.recv(2048)
         if not data: break
 
         data = data.split("::::")
