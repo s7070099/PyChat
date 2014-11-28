@@ -3,122 +3,156 @@
 
 from socket import *
 from thread import *
-from time import *
+from time import time, sleep
 from Tkinter import *
+from uuid import getnode
 
-HOST = "192.168.100.70"#HOST = 'infiteam.no-ip.org'
-PORT = 50035
+VERSION = 0.1
+DEBUG = 1
 
-nickname = ""
-connected = 0
-uid = 0
+class App(object):
+    def __init__(self):
+        self.main = self.MainWindow()
+        self.root.mainloop()
 
-def check_timeout(conn):
-    global connected
-    global timeout
-    timeout = 0
-    while 1:
-        sleep(1)
-        timeout += 1
-        if timeout > 5:
-            if connected == 0:
-                print "Couldn't connect to server. (Connection Timeout)"
-            else:
-                connected = 0
-                print "Connection lost."
-                client()
-                print "Reconnecting..."
-            return
+    class Client(object):
+        class Sock(object):
+            def __init__(self, sock):
+                self.sock = sock
+                self.data = "[:pack:]"
 
-def utf8_encode(text):
-    '''
-    tmp = ""
-    for i in text:
-        if ord(i) >= 128:
-            print i, ord(i)
-            tmp += "chr((%d)" % ord(i-3424)
-        else:
-            tmp += i
-    return tmp
-    '''
-    return text
+            def add(self, data):
+                self.data += str(data) + "::::"
 
-def utf8_decode(text):
-    '''
-    tmp = ""
-    ins = ""
-    decode = ""
-    for i in text:
-        if ins != "":
-            ins += i
-        if i == "c":
-            ins = "c"
-            decode = ""
-        if ins == "":
-            tmp += i
-        if len(ins) > 5:
-            if ins[:5] == "chr((":
-                if i == ")":
-                    print decode
-                    tmp += chr(int(decode))
-                    print chr(int(decode))
-                    ins = ""
-                if i.isdigit() and len(decode) <= 3:
-                    decode += i
-                else:
-                    tmp += ins
-                    ins = ""
-    return tmp
-    '''
-    return text
+            def clear(self):
+                self.data = "[:pack:]"
 
-def response(conn):
-    global connected
-    global timeout
-    while 1:
-        data = conn.recv(2048)
-        if not data: break
+            def send(self):
+                self.sock.send(self.data)
+
+        def config(self, ip="infiteam.no-ip.org", port=12345, nickname="User"):
+            self.ip = ip
+            self.port = port
+            self.nickname = nickname
+            self.macaddr = getnode()
         
-        data_sector = data.split("[:pack:]")[1::]
-        for i in data_sector:
-            data = i.split("::::")
+        def connect(self):
+            self.uid = 0
+            self.timeout = 0
+            self.connected = 0
+            self.sock = socket(AF_INET, SOCK_STREAM)
+            print 'Connecting to %s:%d...' % (self.ip, self.port)
+            self.sock.connect((self.ip, self.port))
+            
+            start_new(self.response, (s,))
+            start_new(self.check_timeout, (s,))
 
-            if data[0] == "sv_full":
-                print "Couldn't connect to server. (Server is full!)"
-                return
+        def check_timeout(self, conn):
+            self.timeout = 0
+            while True:
+                sleep(1)
+                self.timeout += 1
+                if self.timeout > 5:
+                    if self.connected == 0:
+                        print "Couldn't connect to server. (Connection Timeout)"
+                    else:
+                        self.connected = 0
+                        print "Connection lost."
+                        self.connect()
+                        print "Reconnecting..."
+                    return
 
-            if data[0] == "new":
-                global uid
-                uid = int(data[1])
-                if uid >= 0:
-                    connected = 1
-                    conn.send("new::::"+str(uid)+"::::"+utf8_encode(nickname))
-                    print "Connected."
+        def response(self, conn):
+            sock = Sock()
+            while True:
+                data = conn.recv(2048)
+                if not data: break
+                
+                data_sector = data.split("[:pack:]")[1::]
+                for i in data_sector:
+                    data = i.split("::::")
 
-            if data[0] == "ping":
-                timeout = 0
+                    if data[0] == "sv_full":
+                        print "Couldn't connect to server. (Server is full!)"
+                        return
 
-            if data[0] == "say":
-                print "[%s] %s" % (utf8_decode(data[1]), utf8_decode(data[2]))
-                text.insert(END, "[%s] %s" % (utf8_decode(data[1]), utf8_decode(data[2]))+ "\n")
-                text.yview(END)
+                    if data[0] == "new":
+                        self.uid = int(data[1])
+                        if self.uid >= 0:
+                            self.connected = 1
+                            sock.clear()
+                            sock.add("new")
+                            sock.add(self.uid)
+                            sock.add(self.nickname)
+                            sock.add(self.macaddr)
+                            sock.send()
+                            print "Connected."
 
-            if data[0] == "join":
+                    if data[0] == "ping":
+                        self.timeout = 0
+
+                    if data[0] == "say":
+                        print "[%s] %s" % (data[1], data[2])
+                        text.insert(END, "[%s] %s" % (data[1], data[2])+ "\n")
+                        text.yview(END)
+
+                    if data[0] == "join":
+                        pass
+
+                    if data[0] == "left":
+                        pass
+        
+
+    class ConnectWindow(object):
+        def __init__(self):
+            pass
+
+    class MainWindow(object):
+        def __init__(self):
+            CAPTION = "PyChat v." + str(VERSION)
+            WIDTH = 1136
+            HEIGHT = 640
+        
+            self.root = Tk()
+            self.root.title(CAPTION)
+            self.root.resizable(width=FALSE, height=FALSE)
+            self.root.geometry('{}x{}'.format(WIDTH, HEIGHT))
+            self.tk_menu()
+
+        def tk_menu(self):
+            def donothing():
                 pass
+            menubar = Menu(self.root)
+            filemenu = Menu(menubar, tearoff=0)
+            filemenu.add_command(label="Connect", command=donothing)
+            filemenu.add_command(label="Disconnect", command=donothing)
+            filemenu.add_separator()
+            filemenu.add_command(label="Quit", command=donothing)
+            menubar.add_cascade(label="Connections", menu=filemenu)
+            
+            editmenu = Menu(menubar, tearoff=0)
+            editmenu.add_command(label="Undo", command=donothing)
+            editmenu.add_separator()
+            editmenu.add_command(label="Cut", command=donothing)
+            editmenu.add_command(label="Copy", command=donothing)
+            editmenu.add_command(label="Paste", command=donothing)
+            editmenu.add_command(label="Delete", command=donothing)
+            editmenu.add_command(label="Select All", command=donothing)
+            menubar.add_cascade(label="Settings", menu=editmenu)
 
-            if data[0] == "left":
-                pass
+            helpmenu = Menu(menubar, tearoff=0)
+            helpmenu.add_command(label="Check for Update", command=donothing)
+            helpmenu.add_command(label="About PyChat", command=donothing)
+            menubar.add_cascade(label="Help", menu=helpmenu)
 
-def client():
-    global s
-    s = socket(AF_INET, SOCK_STREAM)
-    print 'Connecting to %s:%d...' % (HOST, PORT)
-    s.connect((HOST, PORT))
-    start_new(response, (s,))
-    start_new(check_timeout, (s,))
+            self.root.config(menu=menubar)
 
+        def tk_gui(self):
+            pass
+
+app = App()
+##########################################################################################################################################
 def pychat():
-    global nickname
 
     def getname_callback(event=0):
         global nickname
@@ -167,8 +201,7 @@ def pychat():
             text.insert(END, "Please reconnect.\n")
             text.yview(END)
 
-    def donothing():
-        pass
+    
 
     #init window
     width, height = 1136,640
@@ -178,32 +211,7 @@ def pychat():
     root.geometry('{}x{}'.format(width, height))
 
     #init menu   
-    menubar = Menu(root)
-    filemenu = Menu(menubar, tearoff=0)
-    filemenu.add_command(label="Connect", command=donothing)
-    filemenu.add_command(label="Disconnect", command=donothing)
-    filemenu.add_command(label="Server List", command=donothing)
-    filemenu.add_command(label="Save as...", command=donothing)
-    filemenu.add_separator()
-    filemenu.add_command(label="Quit", command=donothing)
-    menubar.add_cascade(label="Connections", menu=filemenu)
     
-    editmenu = Menu(menubar, tearoff=0)
-    editmenu.add_command(label="Undo", command=donothing)
-    editmenu.add_separator()
-    editmenu.add_command(label="Cut", command=donothing)
-    editmenu.add_command(label="Copy", command=donothing)
-    editmenu.add_command(label="Paste", command=donothing)
-    editmenu.add_command(label="Delete", command=donothing)
-    editmenu.add_command(label="Select All", command=donothing)
-    menubar.add_cascade(label="Settings", menu=editmenu)
-    
-    helpmenu = Menu(menubar, tearoff=0)
-    helpmenu.add_command(label="Check for Update", command=donothing)
-    helpmenu.add_command(label="About PyChat", command=donothing)
-    menubar.add_cascade(label="Help", menu=helpmenu)
-
-    root.config(menu=menubar)
 
     #frame
     frame_pychat = Frame(root)
@@ -260,6 +268,3 @@ def pychat():
 
     #root control
     root.bind("<Return>", send_callback)
-    root.mainloop()
-
-pychat()
