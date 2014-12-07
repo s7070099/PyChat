@@ -7,7 +7,7 @@ from Tkinter import *
 from uuid import getnode
 import tkMessageBox
 
-VERSION = 0.1
+VERSION = 0.2
 DEBUG = 1
 
 class App(object):
@@ -109,47 +109,7 @@ class App(object):
 
                     if data[0] == "left":
                         pass
-
-
-    class Callback(object):
-        def window_connect(event, self):
-            self.window_connect = self.ConnectWindow(self)
-            self.tk_handle = 1
-
-        def disconnect(event, self):
-            self.network.close()
-            pass
-
-        def donothing(event):
-            pass
-
-        def send_message(event):
-            print event
-            pass
-
-        def getname_callback(event=0):
-            global nickname
-            nickname = getname.get()
-            print "Set name to", nickname
-            client()
-            root1.destroy()
-
-        def send_callback(event=0):
-            global connected
-            if connected == 1:
-                global uid
-                #print getmsg.get()[0], ord(getmsg.get()[0])
-                s.send("say::::"+str(uid)+"::::"+utf8_encode(getmsg.get()))
-                getmsg.delete(0, END)
-                getmsg.insert(0, "")
-            else:
-                text.insert(END, "Please reconnect.\n")
-                text.yview(END)
-
-        def rootquit(event, self):
-            self.root.destroy()
-            pass
-
+                    
 
     class ConnectWindow(object):
         def __init__(self, mainself):
@@ -196,6 +156,67 @@ class App(object):
             except:
                 print "Could not connect to server."
 
+                
+    class Callback(object):
+        def window_connect(event, self):
+            self.window_connect = self.ConnectWindow(self)
+            self.tk_handle = 1
+
+        def window_about(event):
+            root = Tk()
+            root.title("About PyChat")
+            root.resizable(width=FALSE, height=FALSE)
+
+            frame1 = Frame(root)
+            frame1.pack(padx=32, pady=10)
+            
+            label1 = Label(frame1, text="This is a Socket Chat Program")
+            label1.pack()
+            label2 = Label(frame1, text="Version "+str(VERSION))
+            label2.pack()
+
+            def close_window():
+                root.destroy()
+
+            button1 = Button(frame1, text="Close Window", command=close_window)
+            button1.pack()
+            
+            root.mainloop()
+
+        def disconnect(event, self):
+            self.network.close()
+            pass
+
+        def donothing(event):
+            pass
+
+        def send_message(event):
+            print event
+            pass
+
+        def getname_callback(event=0):
+            global nickname
+            nickname = getname.get()
+            print "Set name to", nickname
+            client()
+            root1.destroy()
+
+        def send_callback(event=0):
+            global connected
+            if connected == 1:
+                global uid
+                #print getmsg.get()[0], ord(getmsg.get()[0])
+                s.send("say::::"+str(uid)+"::::"+utf8_encode(getmsg.get()))
+                getmsg.delete(0, END)
+                getmsg.insert(0, "")
+            else:
+                text.insert(END, "Please reconnect.\n")
+                text.yview(END)
+
+        def rootquit(event, self):
+            self.root.destroy()
+            pass
+        
     
     def __init__(self):
         CAPTION = "PyChat v." + str(VERSION)
@@ -235,7 +256,7 @@ class App(object):
 
         helpmenu = Menu(menubar, tearoff=0)
         helpmenu.add_command(label="Check for Update", command=self.callback.donothing)
-        helpmenu.add_command(label="About PyChat", command=self.callback.donothing)
+        helpmenu.add_command(label="About PyChat", command=self.callback.window_about)
         menubar.add_cascade(label="Help", menu=helpmenu)
 
         self.root.config(menu=menubar)
