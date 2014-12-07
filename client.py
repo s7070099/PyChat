@@ -7,7 +7,7 @@ from Tkinter import *
 from uuid import getnode
 import tkMessageBox
 
-VERSION = 0.1
+VERSION = 0.2
 DEBUG = 1
 
 class App(object):
@@ -174,6 +174,12 @@ class App(object):
             label1.pack()
             label2 = Label(frame1, text="Version "+str(VERSION))
             label2.pack()
+            label3 = Label(frame1, text="")
+            label3.pack()
+            label4 = Label(frame1, text="by Rungsimun and Pattamaporn")
+            label4.pack()
+            label5 = Label(frame1, text="")
+            label5.pack()
 
             def close_window():
                 root.destroy()
