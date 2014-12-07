@@ -2,23 +2,28 @@ from socket import *
 from thread import *
 from time import *
 
-HOST = '192.168.100.70'
-PORT = 50035
+HOST = '127.0.0.1'
+PORT =  12345
 MAX_USER = 200
+MAX_ROOM = 32
 
 class User(object):
     used = 0
     name = ""
     room = 0
 
+user = list()
+for i in xrange(MAX_USER):
+    user.append(User())
+
 class Room(object):
     used = 0
     name = ""
     max_user = 4
 
-user = list()
-for i in xrange(MAX_USER):
-    user.append(User())
+room = list()
+for i in xrange(MAX_ROOM):
+    room.append(Room())
 
 def check_timeout(check):
     while 1:
@@ -42,17 +47,20 @@ def response(conn):
         print "Wait.."
         data = conn.recv(2048)
         if not data: break
+        data_sector = data.split("[:pack:]")[1::]
+        print data_sector
+        for i in data_sector:
 
-        data = data.split("::::")
-        print data
+            data = i.split("::::")
+            print data
 
-        if data[0] == "new":
-            uid = int(data[1])
-            user[uid].name = data[2]
-            print data[2], "is connected."
+            if data[0] == "new":
+                uid = int(data[1])
+                user[uid].name = data[2]
+                print data[2], "is connected."
 
-        if data[0] == "say":
-            u_sendall("say::::"+user[int(data[1])].name+"::::"+data[2])
+            if data[0] == "say":
+                u_sendall("say::::"+user[int(data[1])].name+"::::"+data[2])
 
 def server():
     print 'PyChat Server v.1.0.0'
