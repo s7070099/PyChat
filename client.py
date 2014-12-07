@@ -7,7 +7,7 @@ from Tkinter import *
 from uuid import getnode
 import tkMessageBox
 
-VERSION = 0.2
+VERSION = 0.1
 DEBUG = 1
 
 class App(object):
