@@ -5,7 +5,7 @@ from thread import *
 from time import time, sleep
 from Tkinter import *
 from uuid import getnode
-import tkMessageBox
+import tkMessageBox, sys, os
 
 VERSION = 0.2
 DEBUG = 1
@@ -26,6 +26,9 @@ class App(object):
             def send(self):
                 self.sock.send(self.data[:len(self.data)-4])
 
+        def __init__(self):
+            self.connected = 0
+            self.stop = 0
 
         def config(self, ip="infiteam.no-ip.org", port=12345, nickname="User"):
             self.ip = ip
@@ -34,10 +37,14 @@ class App(object):
             self.macaddr = getnode()
 
         def connect(self):
+            if self.connected == 1:
+                self.close()
+                sleep(1)
             self.uid = 0
             self.timeout = 0
             self.connected = 0
             self.threadend = 0
+            self.stop = 0
             self.sock = socket(AF_INET, SOCK_STREAM)
             print 'Connecting to %s:%d...' % (self.ip, self.port)
             self.sock.connect((self.ip, self.port))
@@ -46,29 +53,32 @@ class App(object):
             self.checktimeout_td = start_new(self.checktimeout, (self.sock,))
 
         def close(self):
-            self.sock.shutdown(SHUT_RDWR)
+            sock = self.Sock(self.sock)
+            sock.clear()
+            sock.add("dis")
+            sock.add(self.uid)
+            sock.send()
             self.sock.close()
-            self.connected = 0
+            self.connected = 2
+            self.stop = 1
             print "Disconnected."
 
         def checktimeout(self, conn):
-            self.timeout = 0
             stop = 0
             while True:
-                print stop
                 if stop == 1: return
-                sleep(1)
-                print id
-                self.timeout += 1
+                stop = self.stop
+                if stop == 1: return
+                sleep(0.5)
+                self.timeout += 0.5
                 if self.timeout > 3:
                     stop = 1
                     if self.connected == 0:
                         print "Couldn't connect to server. (Connection Timeout)"
-                    else:
-                        self.connect()
+                    elif self.connected == 1:
+                        start_new(self.connect, ())
                         print "Connection lost."
                         print "Reconnecting..."
-                    return
 
         def response(self, conn):
             sock = self.Sock(conn)
@@ -109,6 +119,10 @@ class App(object):
 
                     if data[0] == "left":
                         pass
+
+                    if data[0] == "err":
+                        print "Kicked from server. (Socket Error)"
+                        self.close()
                     
 
     class ConnectWindow(object):
@@ -118,6 +132,14 @@ class App(object):
             self.root.title("Connect")
             self.root.resizable(width=FALSE, height=FALSE)
             self.tk_gui()
+            
+            if os.path.isfile("user.cfg"):
+                f = open("user.cfg")
+                host, name = f.readline().split(" ")
+                self.host.insert(0, host)
+                self.name.insert(0, name)
+                f.close()
+                
             self.root.mainloop()
 
         def tk_gui(self):
@@ -142,13 +164,17 @@ class App(object):
             if self.mainself.tk_handle == 1: self.root.bind("<Return>", self.connect)
 
         def connect(self):
-            host = self.host.get().split(":")
+            host_str = self.host.get()
+            host = host_str.split(":")
             ip = host[0]
             if len(host) == 2:
                 port = int(host[1])
             else:
                 port = 12345
             name = self.name.get()
+            f = open("user.cfg", "w")
+            f.write(host_str+" "+name)
+            f.close()
             try:
                 self.mainself.network.config(ip, port, name)
                 self.mainself.network.connect()
@@ -169,7 +195,7 @@ class App(object):
 
             frame1 = Frame(root)
             frame1.pack(padx=32, pady=10)
-            
+
             label1 = Label(frame1, text="This is a Socket Chat Program")
             label1.pack()
             label2 = Label(frame1, text="Version "+str(VERSION))
@@ -186,7 +212,7 @@ class App(object):
 
             button1 = Button(frame1, text="Close Window", command=close_window)
             button1.pack()
-            
+
             root.mainloop()
 
         def disconnect(event, self):
