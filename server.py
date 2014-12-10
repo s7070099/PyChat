@@ -7,13 +7,15 @@ PyChat Server
 from socket import *
 from thread import *
 from time import *
+import os
 
 #SETTINGS
-VERSION = 0.2
+VERSION = 0.3
 HOST = '127.0.0.1'
 PORT =  12345
 MAX_USER = 200
 MAX_ROOM = 32
+SERVER_MSG = 'server_msg.txt'
 DEBUG = 1
 
 #INIT DATA STRUCTURE
@@ -30,7 +32,9 @@ for i in xrange(MAX_USER):
 class Room(object):
     used = 0
     name = ""
-    max_user = 4
+    password = ""
+    owner = -1
+    #max_user = 4
 
 room = list()
 for i in xrange(MAX_ROOM):
@@ -52,6 +56,12 @@ def check_timeout(check):
     while 1:
         sleep(2)
         u_sendall("ping")
+
+def log():
+    import time
+    localtime = time.localtime(time.time())
+    timestring = time.strftime ('[%Y-%m-%d %H:%M:%S]')
+    return timestring
 
 #NEW SOCK CLASS FOR EASY TO USE
 class Sock(object):
@@ -104,12 +114,12 @@ def response(conn):
                 uid = int(data[1])
                 user[uid].name = data[2]
                 user[uid].macaddr = data[3]
-                print "User", data[2], "is connected."
+                print log(), "User", data[2], "is connected."
                 break
 
             if data[0] == "chn" and len(data) == 4:
                 uid = int(data[1])
-                print "User", user[uid].name, "Change name to", data[2]
+                print log(), "User", user[uid].name, "Change name to", data[2]
                 user[uid].name = data[2]
                 break
 
@@ -126,6 +136,21 @@ def response(conn):
                 user[uid].used = 0
                 break
 
+            if data[0] == "cr" and len(data) == 4:
+                uid = int(data[1])
+                print "room created."
+                break
+
+            if data[0] == "exc":
+                print "Execute"
+                if data[1] == "getroom":
+                    sock.clear()
+                    sock.add("rm")
+                    for i in MAX_ROOM:
+                        if room[i].used == 1:
+                            sock.add(room[i].name)
+                    sock.send(data[2])
+
             sock.clear()
             sock.add("err")
             sock.sendsock(conn)
@@ -133,17 +158,27 @@ def response(conn):
 #INIT SOCKET, RECEIVER AND INIT VAR.
 def server():
     print 'PyChat Server', VERSION
+    print 'Read server message file...'
+    global server_message
+    server_message = list()
+    if os.path.isfile(SERVER_MSG):
+        f = open(SERVER_MSG)
+        for i in f:
+            server_message.append(i)
+        f.close()
+
     s = socket(AF_INET, SOCK_STREAM)
     s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     s.bind((HOST, PORT))
     s.listen(1)
+    print 'Server is starting on %s:%s\n' % (HOST, PORT), '\n'
     global sock
     sock = Sock(s)
-    print 'Server is starting on %s:%s\n' % (HOST, PORT)
+    
     start_new(check_timeout, (0,))
     while 1:
         conn, addr = s.accept()
-        print 'Incomming Connection %s:%s...' % (addr[0], addr[1])
+        print log(), 'Incomming Connection %s:%s...' % (addr[0], addr[1])
         serverfull = 1
         for i in xrange(MAX_USER):
             if user[i].used == 0:

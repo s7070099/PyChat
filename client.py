@@ -11,7 +11,7 @@ from Tkinter import *
 from uuid import getnode
 import tkMessageBox, sys, os
 
-VERSION = 0.2
+VERSION = 0.3
 DEBUG = 1
 #os.system('c:\python27\python server.py')
 
@@ -29,7 +29,10 @@ class App(object):
                 self.data = "[:pack:]"
 
             def send(self):
-                self.sock.send(self.data[:len(self.data)-4])
+                try:
+                    self.sock.send(self.data[:len(self.data)-4])
+                except:
+                    print "Failed to send socket. (Connection lost)"
 
         def __init__(self):
             self.connected = 0
@@ -45,17 +48,31 @@ class App(object):
             if self.connected == 1:
                 self.close()
                 sleep(1)
-            self.uid = 0
+            if self.connected == 2:
+                self.old_sock = self.sock
+            self.uid = -1
+            self.rid = -1
+            self.rhost = ""
             self.timeout = 0
-            self.connected = 0
             self.threadend = 0
             self.stop = 0
-            self.sock = socket(AF_INET, SOCK_STREAM)
-            print 'Connecting to %s:%d...' % (self.ip, self.port)
-            self.sock.connect((self.ip, self.port))
 
-            self.response_td = start_new(self.response, (self.sock,))
-            self.checktimeout_td = start_new(self.checktimeout, (self.sock,))
+            try:
+                self.sock = socket(AF_INET, SOCK_STREAM)
+                print 'Connecting to %s:%d...' % (self.ip, self.port)
+                self.sock.connect((self.ip, self.port))
+                if self.connected == 2:
+                    self.old_sock.close()
+                    self.stop = 1
+                    sleep(1)
+                    self.stop = 0
+                    self.connected = 1
+
+                self.response_h = start_new(self.response, (self.sock,))
+                self.checktimeout_h = start_new(self.checktimeout, (self.sock,))
+            except:
+                print "Failed to connect."
+            
 
         def close(self):
             sock = self.Sock(self.sock)
@@ -64,7 +81,7 @@ class App(object):
             sock.add(self.uid)
             sock.send()
             self.sock.close()
-            self.connected = 2
+            self.connected = 0
             self.stop = 1
             print "Disconnected."
 
@@ -72,18 +89,22 @@ class App(object):
             stop = 0
             while True:
                 if stop == 1: return
+                #print stop, self.timeout
                 stop = self.stop
                 if stop == 1: return
                 sleep(0.5)
                 self.timeout += 0.5
                 if self.timeout > 3:
-                    stop = 1
                     if self.connected == 0:
+                        self.close()
                         print "Couldn't connect to server. (Connection Timeout)"
                     elif self.connected == 1:
-                        self.connect()
+                        self.connected = 2
                         print "Connection lost."
+
+                    if self.connected == 2:
                         print "Reconnecting..."
+                        start_new(self.connect, ())
 
         def response(self, conn):
             sock = self.Sock(conn)
@@ -110,24 +131,28 @@ class App(object):
                             sock.add(self.macaddr)
                             sock.send()
                             print "Connected."
+                        break
 
                     if data[0] == "ping":
                         self.timeout = 0
+                        break
 
                     if data[0] == "say":
                         print "[%s] %s" % (data[1], data[2])
                         #text.insert(END, "[%s] %s" % (data[1], data[2])+ "\n")
                         #text.yview(END)
+                        break
 
                     if data[0] == "join":
-                        pass
+                        break
 
                     if data[0] == "left":
-                        pass
+                        break
 
                     if data[0] == "err":
                         print "Kicked from server. (Socket Error)"
                         self.close()
+                        break
                     
 
     class ConnectWindow(object):
@@ -183,6 +208,7 @@ class App(object):
             f.write(host_str+" "+name)
             f.close()
             try:
+                if self.mainself.network.connected == 2: self.mainself.network.connected = 1
                 self.mainself.network.config(ip, port, name)
                 self.mainself.network.connect()
                 self.root.destroy()
@@ -193,6 +219,40 @@ class App(object):
     class Callback(object):
         def window_connect(event, self):
             self.window_connect = self.ConnectWindow(self)
+
+        def window_createroom(event, self):
+            def create_room():
+                sock = self.network.Sock(self.network.sock)
+                sock.add("cr")
+                sock.add(self.network.uid)
+                sock.add(roomname.get())
+                sock.add(password.get())
+                sock.send()
+
+            root = Tk()
+            root.title("Create Room")
+            root.resizable(width=FALSE, height=FALSE)
+
+            frame1 = Frame(root)
+            frame1.grid(row=0, padx=10, pady=0)
+            label1 = Label(frame1, text="Room Name:")
+            label1.grid(row=0, column=0, sticky=W)
+            roomname = Entry(frame1, width=64)
+            roomname.grid(row=1, column=0)
+            label2 = Label(frame1, text="Room Password:")
+            label2.grid(row=2, column=0, sticky=W)
+            password = Entry(frame1, width=64)
+            password.grid(row=3, column=0)
+
+            frame2 = Frame(frame1)
+            frame2.grid(row=4, pady=10, sticky=E)
+            button1 = Button(frame2, text="Create Room", command=create_room)
+            button1.grid(row=0, column=0, padx=10, sticky=E)
+            button2 = Button(frame2, text="Cancel", command=root.destroy)
+            button2.grid(row=0, column=1, sticky=E)
+
+            root.bind("<Return>", create_room)
+            root.mainloop()
 
         def window_about(event):
             root = Tk()
@@ -253,7 +313,6 @@ class App(object):
         def rootquit(event, self):
             self.root.destroy()
             pass
-        
     
     def __init__(self):
         CAPTION = "PyChat v." + str(VERSION)
@@ -261,28 +320,31 @@ class App(object):
         self.caption = CAPTION
         self.callback = self.Callback()
         self.network = self.Network()
+        self.network.mainself = self
         self.root = Tk()
         self.root.title(CAPTION)
         self.root.resizable(width=FALSE, height=FALSE)
         self.tk_menu()
         self.tk_gui()
         self.root.bind("<Return>", self.callback.send_message)
+
+        start_new(self.check_gui_state, ())
         self.root.mainloop()
 
     def tk_menu(self):
         menubar = Menu(self.root)
         #menubar.config(bg='white', bd=0)
         
-        filemenu = Menu(menubar, tearoff=0)
-        filemenu.add_command(label="Connect", command=lambda: self.callback.window_connect(self))
-        filemenu.add_command(label="Disconnect", command=lambda: self.callback.disconnect(self))
-        filemenu.add_separator()
-        filemenu.add_command(label="Quit", command=lambda: self.callback.rootquit(self))
-        menubar.add_cascade(label="Connections", menu=filemenu)
+        self.filemenu = Menu(menubar, tearoff=0)
+        self.filemenu.add_command(label="Connect", command=lambda: self.callback.window_connect(self))
+        self.filemenu.add_command(label="Disconnect", command=lambda: self.callback.disconnect(self))
+        self.filemenu.add_separator()
+        self.filemenu.add_command(label="Quit", command=lambda: self.callback.rootquit(self))
+        menubar.add_cascade(label="Connections", menu=self.filemenu)
         
-        editmenu = Menu(menubar, tearoff=0)
-        editmenu.add_command(label="Change Name", command=self.callback.donothing)
-        menubar.add_cascade(label="Settings", menu=editmenu)
+        self.editmenu = Menu(menubar, tearoff=0)
+        self.editmenu.add_command(label="Change Name", command=self.callback.donothing)
+        menubar.add_cascade(label="Settings", menu=self.editmenu)
 
         helpmenu = Menu(menubar, tearoff=0)
         helpmenu.add_command(label="Check for Update", command=self.callback.donothing)
@@ -320,15 +382,15 @@ class App(object):
         frame_roomlist.grid(row=1, column=0)
         scrollbar1 = Scrollbar(frame_roomlist)
         scrollbar1.pack(side=RIGHT, fill=Y)
-        listbox1 = Listbox(frame_roomlist, width=44, height=35, bd=0, highlightthickness=0, activestyle=NONE, selectbackground="#3998D6", selectmode=SINGLE)
-        listbox1.pack(side=RIGHT)
-        listbox1.config(yscrollcommand=scrollbar1.set)
+        self.room = Listbox(frame_roomlist, width=44, height=35, bd=0, highlightthickness=0, activestyle=NONE, selectbackground="#3998D6", selectmode=SINGLE)
+        self.room.pack(side=RIGHT)
+        self.room.config(yscrollcommand=scrollbar1.set)
 
-        for i in range(100):
-            listbox1.insert(END, "      Room "+str(i))
+        #for i in range(100):
+        #    listbox1.insert(END, "      Room "+str(i))
 
-        button1 = Button(frame1, text="Create Room", bd=0, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
-        button1.grid(row=2, column=0)
+        self.button1 = Button(frame1, text="Create Room", state=DISABLED, bd=0, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1, command=lambda: self.callback.window_createroom(self))
+        self.button1.grid(row=2, column=0)
 
         #CHAT GUI
         frame_chat = Frame(frame3)
@@ -342,88 +404,80 @@ class App(object):
         if os.path.isfile("readme.txt"):
             f = open("readme.txt")
             for i in f:
-                self.chatlog.insert(END, i)
+                self.log(i)
             f.close()
 
-        entry1 = Entry(frame3, width=61, bd=0, font=("Helvetica Neue", 14))
-        entry1.grid(row=2, column=0)
-
+        self.chatbox = Entry(frame3, width=61, bd=0, font=("Helvetica Neue", 14))
+        self.chatbox.grid(row=2, column=0)
 
         #USER LIST GUI
-        frame_roomlist = Frame(frame5)
-        frame_roomlist.grid(row=1, column=0)
-        scrollbar1 = Scrollbar(frame_roomlist)
-        scrollbar1.pack(side=RIGHT, fill=Y)
-        listbox1 = Listbox(frame_roomlist, width=44, height=35, bd=0, highlightthickness=0, activestyle=NONE, selectbackground="#3998D6", selectmode=SINGLE)
-        listbox1.pack(side=RIGHT)
-        listbox1.config(yscrollcommand=scrollbar1.set)
+        frame_userlist = Frame(frame5)
+        frame_userlist.grid(row=1, column=0)
+        scrollbar3 = Scrollbar(frame_userlist)
+        scrollbar3.pack(side=RIGHT, fill=Y)
+        self.user = Listbox(frame_userlist, width=44, height=24, bd=0, highlightthickness=0, activestyle=NONE, selectbackground="#3998D6", selectmode=SINGLE)
+        self.user.pack(side=RIGHT)
+        self.user.config(yscrollcommand=scrollbar3.set)
 
-        for i in range(100):
-            listbox1.insert(END, "      User "+str(i))
+        #for i in range(100):
+        #    listbox2.insert(END, "      User "+str(i))
 
-        button1 = Button(frame5, text="Exit Room", bd=0, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
-        button1.grid(row=2, column=0)
-        '''
-        frame_pychat = Frame(self.root)
-        frame_pychat.pack(side=TOP)
-        frame_chat = Frame(frame_pychat)
-        frame_chat.pack(side=RIGHT)
-        frame_chatlog = Frame(frame_chat)
-        frame_chatlog.pack(side=TOP)
-        
-        scrollbar = Scrollbar(frame_chatlog)
-        scrollbar.pack(side=RIGHT, fill=Y)
-        listbox_user = Listbox(frame_chatlog, width=64, height=38)
-        listbox_user.pack(side=RIGHT)
-        '''
-        '''
-        for i in range(100):
-            listbox_user.insert(END, "User #"+str(i))
-        '''
+        #listbox2.delete(0, END)
+        self.button2 = Button(frame5, text="Private Message", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        self.button2.grid(row=2, column=0)
+        self.button3 = Button(frame5, text="Kick", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        self.button3.grid(row=3, column=0)
+        self.button4 = Button(frame5, text="Set Owner", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        self.button4.grid(row=4, column=0)
+        self.button5 = Button(frame5, text="Change Room Name", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        self.button5.grid(row=5, column=0)
+        self.button6 = Button(frame5, text="Change Room Password", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        self.button6.grid(row=6, column=0)
+        self.button7 = Button(frame5, text="Exit Room", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        self.button7.grid(row=7, column=0)
 
-        '''
-        listbox_user.config(yscrollcommand=scrollbar.set)
-        scrollbar.config(command=listbox_user.yview)
-        '''
+    def log(self, text):
+        self.chatlog.config(state=NORMAL)
+        self.chatlog.insert(END, text)
+        self.chatlog.config(state=DISABLED)
 
-        '''
-        scrollbar = Scrollbar(frame_chatlog)
-        scrollbar.pack(side=RIGHT, fill=Y)
-        self.log = Text(frame_chatlog, width=90,height=38)
-        self.log.pack(side=RIGHT)
-        self.log.config(yscrollcommand=scrollbar.set)
-        scrollbar.config(command=self.log.yview)
-        
-        frame_chatbox = Frame(frame_chat)
-        frame_chatbox.pack(side=LEFT)
-        label2 = Label(frame_chatbox, text="Chat:")
-        label2.pack(side=LEFT)
-        self.msg = Entry(frame_chatbox, width=111)
-        self.msg.pack(side=LEFT)
-        self.msg.delete(0, END)
-        self.msg.insert(0, "")
-        self.msg_send = Button(frame_chatbox, text="Send", command=self.callback.send_message)
-        self.msg_send.pack(side=LEFT)
-        '''
-
-        '''
-        #init roombox
-        frame_room = Frame(frame_pychat)
-        frame_room.pack(side=TOP)
-        
-        scrollbar = Scrollbar(frame_room)
-        scrollbar.pack(side=RIGHT, fill=Y)
-
-        listbox_room = Listbox(frame_room, width=64, height=38)
-        listbox_room.pack()
-
-        for i in range(100):
-            listbox_room.insert(END, "Chatroom #"+str(i))
-
-        listbox_room.config(yscrollcommand=scrollbar.set)
-        scrollbar.config(command=listbox_room.yview)
-        '''
-        pass
+    def check_gui_state(self):
+        while True:
+            sleep(0.5)
+            if self.network.connected == 0 or self.network.connected == 2:
+                self.filemenu.entryconfig(1,state=DISABLED)
+                self.editmenu.entryconfig(0,state=DISABLED)
+                self.button1.config(state=DISABLED)
+                self.button2.config(state=DISABLED)
+                self.button3.config(state=DISABLED)
+                self.button4.config(state=DISABLED)
+                self.button5.config(state=DISABLED)
+                self.button6.config(state=DISABLED)
+                self.button7.config(state=DISABLED)
+            else:
+                self.filemenu.entryconfig(1,state=NORMAL)
+                self.editmenu.entryconfig(0,state=NORMAL)
+                if self.network.rid == -1:
+                    self.button1.config(state=NORMAL)
+                    self.button2.config(state=DISABLED)
+                    self.button3.config(state=DISABLED)
+                    self.button4.config(state=DISABLED)
+                    self.button5.config(state=DISABLED)
+                    self.button6.config(state=DISABLED)
+                    self.button7.config(state=DISABLED)
+                else:
+                    self.button1.config(state=DISABLED)
+                    self.button2.config(state=NORMAL)
+                    self.button3.config(state=DISABLED)
+                    self.button4.config(state=DISABLED)
+                    self.button5.config(state=DISABLED)
+                    self.button6.config(state=DISABLED)
+                    self.button7.config(state=NORMAL)
+                    if self.network.uid == self.network.rhost:
+                        self.button3.config(state=NORMAL)
+                        self.button4.config(state=NORMAL)
+                        self.button5.config(state=NORMAL)
+                        self.button6.config(state=NORMAL)
 
 if __name__ == "__main__":
     App()
