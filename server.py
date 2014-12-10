@@ -3,13 +3,13 @@
 
 '''
 PyChat Server
-Version: 0.1
 '''
 from socket import *
 from thread import *
 from time import *
 
 #SETTINGS
+VERSION = 0.2
 HOST = '127.0.0.1'
 PORT =  12345
 MAX_USER = 200
@@ -104,8 +104,13 @@ def response(conn):
                 uid = int(data[1])
                 user[uid].name = data[2]
                 user[uid].macaddr = data[3]
-                print "User
-                ", data[2], "is connected."
+                print "User", data[2], "is connected."
+                break
+
+            if data[0] == "chn" and len(data) == 4:
+                uid = int(data[1])
+                print "User", user[uid].name, "Change name to", data[2]
+                user[uid].name = data[2]
                 break
 
             if data[0] == "say" and len(data) == 3:
@@ -127,7 +132,7 @@ def response(conn):
 
 #INIT SOCKET, RECEIVER AND INIT VAR.
 def server():
-    print 'PyChat Server v.1.0.0'
+    print 'PyChat Server', VERSION
     s = socket(AF_INET, SOCK_STREAM)
     s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     s.bind((HOST, PORT))

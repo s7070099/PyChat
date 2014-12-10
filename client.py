@@ -1,5 +1,9 @@
 #!/usr/bin/python
 #-*-coding: tis-620 -*-
+
+'''
+PyChat Client
+'''
 from socket import *
 from thread import *
 from time import time, sleep
@@ -9,6 +13,7 @@ import tkMessageBox, sys, os
 
 VERSION = 0.2
 DEBUG = 1
+#os.system('c:\python27\python server.py')
 
 class App(object):
     class Network(object):
@@ -76,7 +81,7 @@ class App(object):
                     if self.connected == 0:
                         print "Couldn't connect to server. (Connection Timeout)"
                     elif self.connected == 1:
-                        start_new(self.connect, ())
+                        self.connect()
                         print "Connection lost."
                         print "Reconnecting..."
 
@@ -127,9 +132,11 @@ class App(object):
 
     class ConnectWindow(object):
         def __init__(self, mainself):
+            CAPTION = "Connect"
+            
             self.mainself = mainself
             self.root = Tk()
-            self.root.title("Connect")
+            self.root.title(CAPTION)
             self.root.resizable(width=FALSE, height=FALSE)
             self.tk_gui()
             
@@ -161,9 +168,9 @@ class App(object):
             button2 = Button(frame2, text="Cancel", command=self.root.destroy)
             button2.grid(row=0, column=1, sticky=E)
 
-            if self.mainself.tk_handle == 1: self.root.bind("<Return>", self.connect)
+            self.root.bind("<Return>", self.connect)
 
-        def connect(self):
+        def connect(self, event=0):
             host_str = self.host.get()
             host = host_str.split(":")
             ip = host[0]
@@ -186,7 +193,6 @@ class App(object):
     class Callback(object):
         def window_connect(event, self):
             self.window_connect = self.ConnectWindow(self)
-            self.tk_handle = 1
 
         def window_about(event):
             root = Tk()
@@ -222,9 +228,8 @@ class App(object):
         def donothing(event):
             pass
 
-        def send_message(event):
-            print event
-            pass
+        def send_message(self, event):
+            print self, event
 
         def getname_callback(event=0):
             global nickname
@@ -252,23 +257,22 @@ class App(object):
     
     def __init__(self):
         CAPTION = "PyChat v." + str(VERSION)
-        WIDTH = 1136
-        HEIGHT = 640
 
+        self.caption = CAPTION
         self.callback = self.Callback()
         self.network = self.Network()
         self.root = Tk()
         self.root.title(CAPTION)
         self.root.resizable(width=FALSE, height=FALSE)
-        self.root.geometry('{}x{}'.format(WIDTH, HEIGHT))
         self.tk_menu()
         self.tk_gui()
-        self.tk_handle = 0
-        if self.tk_handle == 0: self.root.bind("<Return>", self.callback.send_message)
+        self.root.bind("<Return>", self.callback.send_message)
         self.root.mainloop()
 
     def tk_menu(self):
         menubar = Menu(self.root)
+        #menubar.config(bg='white', bd=0)
+        
         filemenu = Menu(menubar, tearoff=0)
         filemenu.add_command(label="Connect", command=lambda: self.callback.window_connect(self))
         filemenu.add_command(label="Disconnect", command=lambda: self.callback.disconnect(self))
@@ -277,13 +281,7 @@ class App(object):
         menubar.add_cascade(label="Connections", menu=filemenu)
         
         editmenu = Menu(menubar, tearoff=0)
-        editmenu.add_command(label="Undo", command=self.callback.donothing)
-        editmenu.add_separator()
-        editmenu.add_command(label="Cut", command=self.callback.donothing)
-        editmenu.add_command(label="Copy", command=self.callback.donothing)
-        editmenu.add_command(label="Paste", command=self.callback.donothing)
-        editmenu.add_command(label="Delete", command=self.callback.donothing)
-        editmenu.add_command(label="Select All", command=self.callback.donothing)
+        editmenu.add_command(label="Change Name", command=self.callback.donothing)
         menubar.add_cascade(label="Settings", menu=editmenu)
 
         helpmenu = Menu(menubar, tearoff=0)
@@ -294,6 +292,77 @@ class App(object):
         self.root.config(menu=menubar)
 
     def tk_gui(self):
+        #INIT
+        self.root.configure(background='white')
+        
+        frame1 = Frame(self.root)
+        frame2 = Frame(self.root, width=1, height=631, bg='#E6E6E6')
+        frame3 = Frame(self.root)
+        frame4 = Frame(self.root, width=1, height=631, bg='#E6E6E6')
+        frame5 = Frame(self.root)
+
+        frame1.grid(row=0, column=0)
+        frame2.grid(row=0, column=1)
+        frame3.grid(row=0, column=2)
+        frame4.grid(row=0, column=3)
+        frame5.grid(row=0, column=4)
+
+        label1 = Label(frame1, text=" Room List", font=("Helvetica Neue", 14), width=24, fg='#333333', bg='white', anchor=W, justify=LEFT, padx=5, pady=5)
+        label2 = Label(frame3, text=" "+self.caption+" Release Note", font=("Helvetica Neue", 14), width=64, fg='#333333', bg='white', anchor=W, justify=LEFT, padx=5, pady=5)
+        label3 = Label(frame5, text=" User List", font=("Helvetica Neue", 14), width=24, fg='#333333', bg='white', anchor=W, justify=LEFT, padx=5, pady=5)
+
+        label1.grid(row=0, column=0)
+        label2.grid(row=0, column=0)
+        label3.grid(row=0, column=0)
+
+        #ROOM LIST GUI
+        frame_roomlist = Frame(frame1)
+        frame_roomlist.grid(row=1, column=0)
+        scrollbar1 = Scrollbar(frame_roomlist)
+        scrollbar1.pack(side=RIGHT, fill=Y)
+        listbox1 = Listbox(frame_roomlist, width=44, height=35, bd=0, highlightthickness=0, activestyle=NONE, selectbackground="#3998D6", selectmode=SINGLE)
+        listbox1.pack(side=RIGHT)
+        listbox1.config(yscrollcommand=scrollbar1.set)
+
+        for i in range(100):
+            listbox1.insert(END, "      Room "+str(i))
+
+        button1 = Button(frame1, text="Create Room", bd=0, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        button1.grid(row=2, column=0)
+
+        #CHAT GUI
+        frame_chat = Frame(frame3)
+        frame_chat.grid(row=1, column=0)
+        scrollbar2 = Scrollbar(frame_chat)
+        scrollbar2.pack(side=RIGHT, fill=Y)
+        self.chatlog = Text(frame_chat, width=82,height=33, bd=0, padx=20, pady=5, font=("Helvetica Neue", 11))
+        self.chatlog.pack(side=RIGHT)
+        self.chatlog.config(yscrollcommand=scrollbar2.set)
+
+        if os.path.isfile("readme.txt"):
+            f = open("readme.txt")
+            for i in f:
+                self.chatlog.insert(END, i)
+            f.close()
+
+        entry1 = Entry(frame3, width=61, bd=0, font=("Helvetica Neue", 14))
+        entry1.grid(row=2, column=0)
+
+
+        #USER LIST GUI
+        frame_roomlist = Frame(frame5)
+        frame_roomlist.grid(row=1, column=0)
+        scrollbar1 = Scrollbar(frame_roomlist)
+        scrollbar1.pack(side=RIGHT, fill=Y)
+        listbox1 = Listbox(frame_roomlist, width=44, height=35, bd=0, highlightthickness=0, activestyle=NONE, selectbackground="#3998D6", selectmode=SINGLE)
+        listbox1.pack(side=RIGHT)
+        listbox1.config(yscrollcommand=scrollbar1.set)
+
+        for i in range(100):
+            listbox1.insert(END, "      User "+str(i))
+
+        button1 = Button(frame5, text="Exit Room", bd=0, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        button1.grid(row=2, column=0)
         '''
         frame_pychat = Frame(self.root)
         frame_pychat.pack(side=TOP)
