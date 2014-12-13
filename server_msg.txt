@@ -1,21 +1,2 @@
-[Welcome to Teruyo Server.]
-
-Release Notes.
-
-v1.0 - Initial release
-
-v1.1 - Added the ability to change settings through commands
-
-v1.1.1 - added new command /wm color. This will display a list of available colors in the right color
-
-v1.2 - added a Tip of the day. you can now choose if you want the welcome message to only show to players who have never been on your server before or both, you can enable a tip that will play to new players or past players please look at the commands thing above this to see what u can do also added a time delay 0-10 seconds. if you just want a standard welcome message without having to do anything just put the .jar in the plugins folder and that's it. nothing else will change if you don't want to mess with any settings. still just as simple and just as useful!
-
-v1.2-1 - added a line of code to stop player names from being added to the config if things were false, and fixed the time delay issue.
-
-v1.2.2 - Updated for CraftBukkit 1.2.3.
-
-v1.2.3 - Updated for CraftBukkit 1.2.5 ; now able to edit configuration file while server is running. Make your changes, then use the /reload command to see them.
-
-v1.2.4 - Updated for CraftBukkit 1.5.1-R0.2; you no longer need to do any type of reloading to see any changes made to any of the config settings. it will reload when needed. Also added the ability to insert a players name by adding a @p in any message. The past players list is no longer contained in the config.yml anymore. after installing this update it will create a new file called past_players.yml.
-
-v1.2.5 - Updated for CraftBukkit 1.5.2-R0.1; Fixed and NPE when loading the pastplayers.yml also added Metrics support. If you would like to opt-out from metric just navigate to PluginMetrics --> config.yml and set the opt-out value to true.
+[COMMAND]
+/pm [id] [message] - Private Message
