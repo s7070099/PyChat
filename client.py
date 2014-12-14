@@ -78,6 +78,8 @@ class App(object):
             
 
         def close(self):
+            self.mainself.user.delete(0, END)
+            self.mainself.room.delete(0, END)
             self.mainself.log_readme()
             sock = self.Sock(self.sock)
             sock.clear()
@@ -112,6 +114,12 @@ class App(object):
                         start_new(self.connect, ())
 
         def response(self, conn):
+            def user_text(idx, name, owner=0):
+                tmp_text = "      [ID" + " " + str(idx) + "] " + str(name)
+                if owner == 1:
+                    tmp_text += " (Owner)"
+                return tmp_text
+            
             sock = self.Sock(conn)
             while True:
                 data = conn.recv(4096)
@@ -181,28 +189,45 @@ class App(object):
                         self.rhost = data[2]
                         self.mainself.log_clear()
                         self.mainself.chatlabel.config(text=data[3])
-                        print self.uid, self.rhost
-                        if self.uid != self.rhost:
-                            print "Receiving User"
+                        if int(self.uid) != int(self.rhost):
                             self.userlist = list()
                             self.mainself.user.delete(0, END)
-                            print data
                             for i in xrange(5, len(data)-1, 2):
                                 self.userlist.append(data[i])
-                                tmp_text = "[ID" + " " + data[i] + "] " + data[i+1]
+                                tmp_text = user_text(data[i], data[i+1], 0)
                                 if int(data[i]) == int(self.rhost):
-                                    tmp_text += " (Owner)"
-                                self.mainself.user.insert(END, "      "+tmp_text)
+                                    tmp_text = user_text(data[i], data[i+1], 1)
+                                self.mainself.user.insert(END, tmp_text)
+                        else:
+                            self.userlist.append(self.uid)
+                            self.mainself.user.insert(END, user_text(self.uid, self.nickname, 1))
 
                     if data[0] == "rm_adduser":
-                        tmp_text = "[ID" + " " + data[1] + "] " + data[2]
-                        self.mainself.user.insert(END, "      "+tmp_text)
+                        tmp_text = user_text(data[1], data[2], 0)
+                        self.mainself.user.insert(END, tmp_text)
                         self.userlist.append(data[1])
 
                     if data[0] == "rm_deluser":
-                        self.mainself.user.delete(self.userlist.index("      "+data[2]))
+                        self.mainself.user.delete(self.userlist.index(data[1]))
                         self.userlist.remove(data[1])
-                        
+
+                    if data[0] == "rm_chowner":
+                        print data
+                        print self.userlist
+                        print "--------------------"
+                        idx = self.userlist.index(data[1])
+                        self.mainself.user.delete(idx)
+                        tmp_text = user_text(data[1], data[2], 1)
+                        if int(data[1]) == int(self.uid):
+                            self.mainself.user.insert(idx, tmp_text)
+
+                    if data[0] == "rm_kick":
+                        self.network.rid = -1
+                        self.network.select_uid = -1
+                        self.network.userlist = list()
+                        self.mainself.user.delete(0, END)
+                        self.log_servermessage()
+                        print "you were kicked from the room."
 
                     if data[0] == "err":
                         print "Kicked from server. (Socket Error)"
@@ -383,6 +408,7 @@ class App(object):
                     if mainself.network.connected == 1:
                         sock = mainself.network.Sock(mainself.network.sock)
                         sock.add("exc")
+                        sock.add(mainself.network.uid)
                         sock.add(cmd[0])
                         if len(cmd) > 1:
                             for i in cmd[1:]:
@@ -428,7 +454,8 @@ class App(object):
                         sock.add("rm_deluser")
                         sock.add(mainself.network.uid)
                         sock.send()
-
+                        
+                    mainself.select_uid = -1
                     sock.clear()
                     sock.add("rm_request")
                     sock.add(mainself.network.uid)
@@ -474,8 +501,10 @@ class App(object):
                 sock.add("rm_deluser")
                 sock.add(self.network.uid)
                 sock.send()
+                self.network.rid = -1
+                self.network.select_uid = -1
                 self.network.userlist = list()
-                self.network.user.delete(0, END)
+                self.user.delete(0, END)
                 self.log_servermessage()
 
         def user_select(self, event, mainself):
@@ -623,20 +652,16 @@ class App(object):
         self.button7.grid(row=7, column=0)
 
     def log_servermessage(self):
-        self.chatlog.config(state=NORMAL)
         self.chatlabel.config(text=self.server_caption)
-        self.chatbox.delete("1.0", END)
+        self.log_clear()
         for i in self.server_message:
-            self.chatbox.insert(END, i)
-        self.chatlog.config(state=DISABLED)
+            self.log(i)
 
     def log_readme(self):
-        self.chatlog.config(state=NORMAL)
         self.chatlabel.config(text=self.chatcaption)
-        self.chatbox.delete("1.0", END)
+        self.log_clear()
         for i in self.readme:
-            self.chatbox.insert(END, i)
-        self.chatlog.config(state=DISABLED)
+            self.log(i)
     
     def log_clear(self):
         self.chatlog.config(state=NORMAL)
@@ -652,23 +677,13 @@ class App(object):
     def check_gui_state(self):
         while True:
             sleep(0.5)
-            if self.network.connected == 0 or self.network.connected == 2:
-                self.filemenu.entryconfig(1,state=DISABLED)
-                self.editmenu.entryconfig(0,state=DISABLED)
-                self.room.config(state=DISABLED)
-                self.user.config(state=DISABLED)
-                self.button1.config(state=DISABLED)
-                self.button2.config(state=DISABLED)
-                self.button3.config(state=DISABLED)
-                self.button4.config(state=DISABLED)
-                self.button5.config(state=DISABLED)
-                self.button6.config(state=DISABLED)
-                self.button7.config(state=DISABLED)
-            else:
-                self.filemenu.entryconfig(1,state=NORMAL)
-                self.editmenu.entryconfig(0,state=NORMAL)
-                if int(self.network.rid) == -1:
-                    self.button1.config(state=NORMAL)
+            try:
+                if self.network.connected == 0 or self.network.connected == 2:
+                    self.filemenu.entryconfig(1,state=DISABLED)
+                    self.editmenu.entryconfig(0,state=DISABLED)
+                    self.room.config(state=DISABLED)
+                    self.user.config(state=DISABLED)
+                    self.button1.config(state=DISABLED)
                     self.button2.config(state=DISABLED)
                     self.button3.config(state=DISABLED)
                     self.button4.config(state=DISABLED)
@@ -676,18 +691,31 @@ class App(object):
                     self.button6.config(state=DISABLED)
                     self.button7.config(state=DISABLED)
                 else:
-                    self.button1.config(state=DISABLED)
-                    self.button2.config(state=NORMAL)
-                    self.button3.config(state=DISABLED)
-                    self.button4.config(state=DISABLED)
-                    self.button5.config(state=DISABLED)
-                    self.button6.config(state=DISABLED)
-                    self.button7.config(state=NORMAL)
-                    if int(self.network.uid) == int(self.network.rhost):
-                        self.button3.config(state=NORMAL)
-                        self.button4.config(state=NORMAL)
-                        self.button5.config(state=NORMAL)
-                        self.button6.config(state=NORMAL)
+                    self.filemenu.entryconfig(1,state=NORMAL)
+                    self.editmenu.entryconfig(0,state=NORMAL)
+                    if int(self.network.rid) == -1:
+                        self.button1.config(state=NORMAL)
+                        self.button2.config(state=DISABLED)
+                        self.button3.config(state=DISABLED)
+                        self.button4.config(state=DISABLED)
+                        self.button5.config(state=DISABLED)
+                        self.button6.config(state=DISABLED)
+                        self.button7.config(state=DISABLED)
+                    else:
+                        self.button1.config(state=DISABLED)
+                        self.button2.config(state=NORMAL)
+                        self.button3.config(state=DISABLED)
+                        self.button4.config(state=DISABLED)
+                        self.button5.config(state=DISABLED)
+                        self.button6.config(state=DISABLED)
+                        self.button7.config(state=NORMAL)
+                        if int(self.network.uid) == int(self.network.rhost):
+                            self.button3.config(state=NORMAL)
+                            self.button4.config(state=NORMAL)
+                            self.button5.config(state=NORMAL)
+                            self.button6.config(state=NORMAL)
+            except:
+                pass
 
 if __name__ == "__main__":
     App()

@@ -153,6 +153,14 @@ def response(conn):
             data = i.split("::::")
             if DEBUG: print data
 
+            #FUNC
+            def sendmessage(text="", uid=-1):
+                sock.clear()
+                sock.add("print")
+                sock.add(text)
+                if uid != -1:
+                    sock.send(uid)
+
             if data[0] == "new" and len(data) == 4:
                 uid = int(data[1])
                 user[uid].name = data[2]
@@ -189,10 +197,7 @@ def response(conn):
                 user[uid].name = data[2]
 
             if data[0] == "say" and len(data) == 3:
-                sock.clear()
-                sock.add("print")
-                sock.add("[" + user[int(data[1])].name + "] " + data[2])
-                sock.sendroom(user[uid].room)
+                sendmessage("[" + user[int(data[1])].name + "] " + data[2], user[uid].room)
                 print log(), "[" + user[int(data[1])].name + "]"+"("+str(uid)+")", data[2]
 
             if data[0] == "dis" and len(data) == 2:
@@ -200,13 +205,15 @@ def response(conn):
                 user[uid].used = 0
                 print log(), "User", user[uid].name+"("+str(uid)+")", "is disconnected."
 
-            if data[0] == "kick":
+            if data[0] == "rm_kick":
                 uid = int(data[1])
                 oid = int(data[2])
                 if uid == room[user[uid].room].owner:
                     user[oid].room = -1
                     print log(), "User", user[uid].name+"("+str(uid)+") Kick user ", user[oid].name+"("+str(oid)+") from room."
-                    #no return must fix.
+                    sock.clear()
+                    sock.add("kick")
+                    sock.send(oid)
 
             if data[0] == "rm_create" and len(data) == 4:
                 uid = int(data[1])
@@ -223,11 +230,7 @@ def response(conn):
                         sock.add(uid)
                         sock.add(data[2])
                         sock.send(uid)
-                        sock.clear()
-                        sock.add("rm_adduser")
-                        sock.add(uid)
-                        sock.add(user[uid].name)
-                        sock.send(uid)
+                        sendmessage("Type /help for command list.", uid)
                         print log(), "User", user[uid].name+"("+str(uid)+")", "Create Room", "[",room[i].name,"]" , "[", i,"]"
                         break
 
@@ -281,16 +284,16 @@ def response(conn):
                 sock.clear()
                 sock.add("rm_deluser")
                 sock.add(uid)
-                sock.add(user[uid].name)
                 sock.sendroom_other(rid, uid)
-                if user[uid].room == room[rid].owner:
+                if int(uid) == int(room[rid].owner):
                     new_owner = 0
                     for i in xrange(MAX_USER):
                         if user[i].room == rid and i != uid:
                             room[rid].owner = i
                             sock.clear()
                             sock.add("rm_chowner")
-                            sock.add(uid)
+                            sock.add(i)
+                            sock.add(user[i].name)
                             sock.sendroom_other(user[uid].room, uid)
                             new_owner = 1
                             break
@@ -299,7 +302,9 @@ def response(conn):
                 user[uid].room = -1
 
             if data[0] == "exc":
-                if data[1] == "help":
+                uid = int(data[1])
+                
+                if data[2] == "help":
                     sock.clear()
                     sock.add("print")
                     sock.add("/example1")
@@ -311,9 +316,8 @@ def response(conn):
                     sock.add("/example3")
                     sock.send(uid)
 
-                elif data[1] == "ban":
-                    uid = data[2]
-                    oid = data[3]
+                elif data[2] == "ban":
+                    oid = int(data[3])
                     if user[uid].admin > 0:
                         with open(SERVER_BAN, "a") as f:
                             f.writeline(user[oid].macaddr)
@@ -323,19 +327,15 @@ def response(conn):
                         sock.add("Permission Denied!")
                         sock.send(uid)
                         
-                elif data[1] == "getroom":
-                    sock.clear()
-                    sock.add("rm")
-                    for i in MAX_ROOM:
-                        if room[i].used == 1:
-                            sock.add(room[i].name)
-                    sock.send(data[2])
+                elif data[2] == "pm":
+                    pass
+                    
 
                 else:
                     sock.clear()
                     sock.add("print")
-                    sock.add("Server Unknown Command: /"+data[1])
-                    sock.send(data[1])
+                    sock.add("Server Unknown Command: /"+data[2])
+                    sock.send(uid)
 
             #sock.clear()
             #sock.add("err")
@@ -381,7 +381,10 @@ def server():
                 start_new(response, (conn,))
                 user[i].used = 1
                 user[i].sock = conn
-                u_send(i, "new::::"+str(i))
+                sock.clear()
+                sock.add("new")
+                sock.add(i)
+                sock.send(i)
                 serverfull = 0
                 break
         if serverfull == 1:
