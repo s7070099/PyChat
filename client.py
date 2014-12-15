@@ -10,6 +10,7 @@ from time import time, sleep
 from Tkinter import *
 from uuid import getnode
 import tkMessageBox, sys, os
+from winsound import PlaySound as play
 
 VERSION = 0.3
 DEBUG = 1
@@ -106,6 +107,7 @@ class App(object):
                         print "Couldn't connect to server. (Connection Timeout)"
                     elif self.connected == 1:
                         self.connected = 2
+                        self.mainself.user.delete(0, END)
                         self.mainself.log_readme()
                         print "Connection lost."
 
@@ -169,6 +171,18 @@ class App(object):
                     if data[0] == "print":
                         self.mainself.log(data[1], 1)
 
+                    if data[0] == "play_msg":
+                        play("msn.wav", 1)
+
+                    if data[0] == "play_pm":
+                        play("msn.wav", 1)
+
+                    if data[0] == "play_join":
+                        play("msn.wav", 1)
+
+                    if data[0] == "play_exit":
+                        play("msn.wav", 1)
+
                     if data[0] == "rm_list":
                         self.timeout = 0
                         self.roomlist = list()
@@ -193,38 +207,42 @@ class App(object):
                             self.userlist = list()
                             self.mainself.user.delete(0, END)
                             for i in xrange(5, len(data)-1, 2):
-                                self.userlist.append(data[i])
+                                self.userlist.append(int(data[i]))
                                 tmp_text = user_text(data[i], data[i+1], 0)
                                 if int(data[i]) == int(self.rhost):
                                     tmp_text = user_text(data[i], data[i+1], 1)
                                 self.mainself.user.insert(END, tmp_text)
                         else:
-                            self.userlist.append(self.uid)
+                            self.userlist.append(int(self.uid))
                             self.mainself.user.insert(END, user_text(self.uid, self.nickname, 1))
 
                     if data[0] == "rm_adduser":
                         tmp_text = user_text(data[1], data[2], 0)
                         self.mainself.user.insert(END, tmp_text)
-                        self.userlist.append(data[1])
+                        self.userlist.append(int(data[1]))
 
                     if data[0] == "rm_deluser":
-                        self.mainself.user.delete(self.userlist.index(data[1]))
-                        self.userlist.remove(data[1])
+                        print "DEL USER (Kicker)"
+                        self.mainself.user.delete(self.userlist.index(int(data[1])))
+                        self.userlist.remove(int(data[1]))
 
                     if data[0] == "rm_chowner":
-                        print data
-                        print self.userlist
-                        print "--------------------"
-                        idx = self.userlist.index(data[1])
+                        if data[1] != "":
+                            #remove old owner
+                            idx = self.userlist.index(int(data[1]))
+                            self.mainself.user.delete(idx)
+                            self.mainself.user.insert(idx, user_text(data[1], data[2], 0))
+                        #give new owner
+                        self.rhost = data[3]
+                        idx = self.userlist.index(int(data[3]))
                         self.mainself.user.delete(idx)
-                        tmp_text = user_text(data[1], data[2], 1)
-                        if int(data[1]) == int(self.uid):
-                            self.mainself.user.insert(idx, tmp_text)
+                        self.mainself.user.insert(idx, user_text(data[3], data[4], 1))
 
                     if data[0] == "rm_kick":
+                        print "KICK!!"
                         self.network.rid = -1
+                        self.network.rhost = -1
                         self.network.select_uid = -1
-                        self.network.userlist = list()
                         self.mainself.user.delete(0, END)
                         self.log_servermessage()
                         print "you were kicked from the room."
@@ -470,34 +488,34 @@ class App(object):
         def kick(event, self):
             if self.network.connected == 1 and int(self.network.select_uid) != -1:
                 sock = self.network.netsock
+                sock.clear()
                 sock.add("kick")
                 sock.add(self.network.uid)
-                sock.add(self.network.macaddr)
                 sock.add(self.network.select_uid)
                 sock.send()
+                self.network.select_uid = -1
 
         def owner(event, self):
             if self.network.connected == 1 and int(self.network.select_uid) != -1:
                 sock = self.network.netsock
+                sock.clear()
                 sock.add("rm_chowner")
                 sock.add(self.network.uid)
-                sock.add(self.network.macaddr)
                 sock.add(self.network.select_uid)
                 sock.send()
 
         def rm_chname(event, self):
-            if self.network.connected == 1 and int(self.network.select_uid) != -1:
-                self.chatbox.delete(0, END)
-                self.chatbox.insert(0, "/set roomname "+ str(self.network.select_uid) + " ")
+            if self.network.connected == 1:
+                pass
 
         def rm_chpass(event, self):
-            if self.network.connected == 1 and int(self.network.select_uid) != -1:
-                self.chatbox.delete(0, END)
-                self.chatbox.insert(0, "/set roompass "+ str(self.network.select_uid) + " ")
+            if self.network.connected == 1:
+                pass
 
         def rm_exit(event, self):
             if self.network.connected == 1 and int(self.network.rid) != -1:
                 sock = self.network.netsock
+                sock.clear()
                 sock.add("rm_deluser")
                 sock.add(self.network.uid)
                 sock.send()
@@ -719,5 +737,3 @@ class App(object):
 
 if __name__ == "__main__":
     App()
-
-

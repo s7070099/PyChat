@@ -1,2 +1,4 @@
+NYANNNNNNNNNNNNN
+
 [COMMAND]
 /pm [id] [message] - Private Message
