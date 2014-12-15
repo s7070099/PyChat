@@ -384,6 +384,29 @@ class App(object):
             root = Tk()
             root.title("About PyChat")
             root.resizable(width=FALSE, height=FALSE)
+            root.config(bg="white")
+
+            frame1 = Frame(root, width=200, height=20)
+            frame1.pack(padx=96, pady=24)
+
+            label1 = Label(frame1, text="This is a Socket Chat Program")
+            label1.pack()
+
+            label2 = Label(frame1, text="Version "+str(VERSION))
+            label2.pack()
+
+            def close_window():
+                root.destroy()
+
+            button1 = Button(frame1, command=close_window, bg="white", fg="#4D89C1", bd=0, text="Close Window")
+            button1.pack()
+            
+            
+            root.mainloop()
+            '''
+            root = Tk()
+            root.title("About PyChat")
+            root.resizable(width=FALSE, height=FALSE)
 
             frame1 = Frame(root)
             frame1.pack(padx=32, pady=10)
@@ -406,6 +429,7 @@ class App(object):
             button1.pack()
 
             root.mainloop()
+            '''
 
         def disconnect(event, self):
             self.network.close()

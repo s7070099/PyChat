@@ -17,7 +17,8 @@ MAX_USER = 200
 MAX_ROOM = 16
 SERVER_MSG = 'server_msg.txt'
 SERVER_BAN = 'server_ban.txt'
-SERVER_CAPTION = "Welcome to Teruyo Server"
+SERVER_BADWORD = 'server_badword.txt'
+SERVER_CAPTION = 'Welcome to Teruyo Server'
 DEBUG = 0
 
 #INIT DATA STRUCTURE
@@ -151,13 +152,8 @@ def sendmessage(text="", uid=-1):
 def idn(uid):
     return "("+str(uid)+")"
 
-def filter_restrict(text):
-    restrict = ["fuck", "wtf", "shit", "bitch", "wth", "lmao", "lmfao",
-                "stfw","damn", "slut", "utsl", "retarded", "fucking",
-                "bastard", "prick", "dick", "jerk", "twat", "pussy", "crap",
-                "bull", "gfy", "asshole", "giyf", "gtfo", "jfgi", "fgi",
-                "stfu", "rtfa", "rtfm", "dfc", "roflao", "douchebag"]
-    for i in restrict:
+def filter_badword(text):
+    for i in server_badword:
         text = text.replace(i, len(i)*"*")
     return text
 
@@ -217,7 +213,7 @@ def response(conn):
                 sock.sendroom_other(user[uid].room, uid)
                 sock.clear()
                 sock.add("print")
-                sock.add("[" + user[uid].name + "] " + filter_restrict(data[2]))
+                sock.add("[" + user[uid].name + "] " + filter_badword(data[2]))
                 sock.sendroom(user[uid].room)
                 print log(), "[" + user[uid].name + "]"+"("+str(uid)+")", data[2]
 
@@ -391,6 +387,16 @@ def server():
         for i in f:
             server_ban.append(i)
         f.close()
+
+    print 'Reading server badword list...'
+    global server_badword
+    server_badword = list()
+    if os.path.isfile(SERVER_BADWORD):
+        f = open(SERVER_BADWORD)
+        for i in f:
+            server_badword.append(i.replace("\n", ""))
+        f.close()
+    print server_badword
 
     s = socket(AF_INET, SOCK_STREAM)
     s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
