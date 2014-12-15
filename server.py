@@ -11,14 +11,14 @@ import os
 
 #SETTINGS
 VERSION = 0.3
-HOST = '192.168.100.60'
+HOST = '127.0.0.1'
 PORT =  12345
 MAX_USER = 200
 MAX_ROOM = 16
 SERVER_MSG = 'server_msg.txt'
 SERVER_BAN = 'server_ban.txt'
 SERVER_CAPTION = "Welcome to Teruyo Server"
-DEBUG = 1
+DEBUG = 0
 
 #INIT DATA STRUCTURE
 class User(object):
@@ -151,6 +151,16 @@ def sendmessage(text="", uid=-1):
 def idn(uid):
     return "("+str(uid)+")"
 
+def filter_restrict(text):
+    restrict = ["fuck", "wtf", "shit", "bitch", "wth", "lmao", "lmfao",
+                "stfw","damn", "slut", "utsl", "retarded", "fucking",
+                "bastard", "prick", "dick", "jerk", "twat", "pussy", "crap",
+                "bull", "gfy", "asshole", "giyf", "gtfo", "jfgi", "fgi",
+                "stfu", "rtfa", "rtfm", "dfc", "roflao", "douchebag"]
+    for i in restrict:
+        text = text.replace(i, len(i)*"*")
+    return text
+
 #MAIN SERVER LOGIC
 def response(conn):
     state = 0
@@ -207,7 +217,7 @@ def response(conn):
                 sock.sendroom_other(user[uid].room, uid)
                 sock.clear()
                 sock.add("print")
-                sock.add("[" + user[uid].name + "] " + data[2])
+                sock.add("[" + user[uid].name + "] " + filter_restrict(data[2]))
                 sock.sendroom(user[uid].room)
                 print log(), "[" + user[uid].name + "]"+"("+str(uid)+")", data[2]
 

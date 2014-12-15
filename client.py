@@ -562,7 +562,7 @@ class App(object):
     def tk_menu(self):
         menubar = Menu(self.root)
         #menubar.config(bg='white', bd=0)
-        
+
         self.filemenu = Menu(menubar, tearoff=0)
         self.filemenu.add_command(label="Connect", command=lambda: self.callback.window_connect(self))
         self.filemenu.add_command(label="Disconnect", command=lambda: self.callback.disconnect(self))
