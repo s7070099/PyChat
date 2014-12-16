@@ -40,6 +40,8 @@ class App(object):
             self.stop = 0
             self.roomlist = list()
             self.userlist = list()
+            self.last_nm = ""
+            self.last_pw = ""
 
         def config(self, ip="infiteam.no-ip.org", port=12345, nickname="User"):
             self.ip = ip
@@ -175,13 +177,13 @@ class App(object):
                         play("msn.wav", 1)
 
                     if data[0] == "play_pm":
-                        play("msn.wav", 1)
+                        play("pm.wav", 1)
 
                     if data[0] == "play_join":
-                        play("msn.wav", 1)
+                        play("join.wav", 1)
 
                     if data[0] == "play_exit":
-                        play("msn.wav", 1)
+                        play("exit.wav", 1)
 
                     if data[0] == "rm_list":
                         self.timeout = 0
@@ -194,7 +196,7 @@ class App(object):
                     if data[0] == "rm_request":
                         if data[1] == "0":
                             self.request_rid = data[2]
-                            self.mainself.callback.window_enterpw(self.mainself)
+                            self.mainself.callback.window_enter(self.mainself)
                         if data[1] == "1":
                             self.mainself.log("Wrong Password!")
 
@@ -222,30 +224,32 @@ class App(object):
                         self.userlist.append(int(data[1]))
 
                     if data[0] == "rm_deluser":
-                        print "DEL USER (Kicker)"
                         self.mainself.user.delete(self.userlist.index(int(data[1])))
                         self.userlist.remove(int(data[1]))
 
                     if data[0] == "rm_chowner":
                         if data[1] != "":
-                            #remove old owner
                             idx = self.userlist.index(int(data[1]))
                             self.mainself.user.delete(idx)
                             self.mainself.user.insert(idx, user_text(data[1], data[2], 0))
-                        #give new owner
                         self.rhost = data[3]
                         idx = self.userlist.index(int(data[3]))
                         self.mainself.user.delete(idx)
                         self.mainself.user.insert(idx, user_text(data[3], data[4], 1))
 
                     if data[0] == "rm_kick":
-                        print "KICK!!"
-                        self.network.rid = -1
-                        self.network.rhost = -1
-                        self.network.select_uid = -1
+                        self.rid = -1
+                        self.rhost = -1
+                        self.select_uid = -1
                         self.mainself.user.delete(0, END)
-                        self.log_servermessage()
+                        self.mainself.log_servermessage()
                         print "you were kicked from the room."
+
+                    if data[0] == "rm_rename":
+                        self.mainself.chatlabel.config(text=data[1])
+
+                    if data[0] == "nickname":
+                        pass
 
                     if data[0] == "err":
                         print "Kicked from server. (Socket Error)"
@@ -314,10 +318,10 @@ class App(object):
                 except:
                     print "Could not connect to server."
 
-                
+
     class Callback(object):
-        def window_connect(event, self):
-            self.window_connect = self.ConnectWindow(self)
+        def window_connect(self, mainself):
+            mainself.window_connect = mainself.ConnectWindow(mainself)
 
         def window_createroom(event, self):
             def create_room():
@@ -355,30 +359,82 @@ class App(object):
             root.bind("<Return>", create_room)
             root.mainloop()
 
-        def window_enterpw(self, mainself):
+        def window_enter(self, mainself, mode=0):
             def join_room():
-                sock = self.network.Sock(self.network.sock)
+                sock = mainself.network.netsock
+                sock.clear()
                 sock.add("rm_request")
-                sock.add(self.network.uid)
-                sock.add(self.network.request_rid)
-                sock.add(password.get())
+                sock.add(mainself.network.uid)
+                sock.add(mainself.network.request_rid)
+                sock.add(textbox.get())
+                sock.send()
+                root.destroy()
+
+            def ch_name():
+                sock = mainself.network.netsock
+                sock.clear()
+                sock.add("exc")
+                sock.add(mainself.network.uid)
+                sock.add("room")
+                sock.add("name")
+                sock.add(textbox.get())
+                sock.send()
+                root.destroy()
+
+            def ch_password():
+                sock = mainself.network.netsock
+                sock.clear()
+                sock.add("exc")
+                sock.add(mainself.network.uid)
+                sock.add("room")
+                sock.add("password")
+                sock.add(textbox.get())
+                sock.send()
+                root.destroy()
+
+            def ch_nickname():
+                sock = mainself.network.netsock
+                sock.clear()
+                sock.add("exc")
+                sock.add(mainself.network.uid)
+                sock.add("user")
+                sock.add("nickname")
+                sock.add(textbox.get())
                 sock.send()
                 root.destroy()
 
             root = Tk()
-            root.title("Enter Password")
-            root.resizable(width=FALSE, height=FALSE)
-
             frame1 = Frame(root)
             frame1.grid(row=0, padx=5, pady=5)
-            roomname = Entry(frame1, width=32, font=("Helvetica Neue", 13))
-            roomname.grid(row=0, column=0)
-
-            button1 = Button(frame1, text="Enter", command=join_room)
+            
+            if mode == 0:
+                CAPTION = "Enter Password"
+                button1 = Button(frame1, text="Enter", command=join_room)
+                root.bind("<Return>", join_room)
+            elif mode == 1:
+                button1 = Button(frame1, text="Change", command=ch_name)
+                root.resizable(width=FALSE, height=FALSE)
+                root.title("Change Room Name")
+                root.bind("<Return>", ch_name)
+            elif mode == 2:
+                button1 = Button(frame1, text="Change", command=ch_password)
+                root.resizable(width=FALSE, height=FALSE)
+                root.title("Change Room Password")
+                root.bind("<Return>", ch_password)
+            elif mode == 3:
+                button1 = Button(frame1, text="Change", command=ch_nickname)
+                root.resizable(width=FALSE, height=FALSE)
+                root.title("Change Nickname")
+                root.bind("<Return>", ch_nickname)
+            
+            textbox = Entry(frame1, width=32, font=("Helvetica Neue", 13))
+            textbox.grid(row=0, column=0)
             button1.grid(row=0, column=1)
+                
+            #root.mainloop()
 
-            root.bind("<Return>", join_room)
-            root.mainloop()
+        def window_update(self, mainself):
+            mainself.callback.window_enter(mainself)
 
         def window_about(event):
             root = Tk()
@@ -386,56 +442,22 @@ class App(object):
             root.resizable(width=FALSE, height=FALSE)
             root.config(bg="white")
 
-            frame1 = Frame(root, width=200, height=20)
+            frame1 = Frame(root, bg="white", width=200, height=20)
             frame1.pack(padx=96, pady=24)
 
-            label1 = Label(frame1, text="This is a Socket Chat Program")
+            label1 = Label(frame1, bg="white", text="This is a Socket Chat Program")
             label1.pack()
 
-            label2 = Label(frame1, text="Version "+str(VERSION))
+            label2 = Label(frame1, bg="white", text="Version "+str(VERSION))
             label2.pack()
 
-            def close_window():
-                root.destroy()
-
-            button1 = Button(frame1, command=close_window, bg="white", fg="#4D89C1", bd=0, text="Close Window")
+            button1 = Button(frame1, command=root.destroy, font=("Helvetica Neue", 10), bg="white", fg="#4D89C1", bd=0, text="Close Window")
             button1.pack()
             
-            
             root.mainloop()
-            '''
-            root = Tk()
-            root.title("About PyChat")
-            root.resizable(width=FALSE, height=FALSE)
-
-            frame1 = Frame(root)
-            frame1.pack(padx=32, pady=10)
-
-            label1 = Label(frame1, text="This is a Socket Chat Program")
-            label1.pack()
-            label2 = Label(frame1, text="Version "+str(VERSION))
-            label2.pack()
-            label3 = Label(frame1, text="")
-            label3.pack()
-            label4 = Label(frame1, text="by Rungsimun and Pattamaporn")
-            label4.pack()
-            label5 = Label(frame1, text="")
-            label5.pack()
-
-            def close_window():
-                root.destroy()
-
-            button1 = Button(frame1, text="Close Window", command=close_window)
-            button1.pack()
-
-            root.mainloop()
-            '''
 
         def disconnect(event, self):
             self.network.close()
-
-        def donothing(event):
-            pass
 
         def send_message(self, event, mainself):
             text = mainself.chatbox.get()
@@ -513,7 +535,7 @@ class App(object):
             if self.network.connected == 1 and int(self.network.select_uid) != -1:
                 sock = self.network.netsock
                 sock.clear()
-                sock.add("kick")
+                sock.add("rm_kick")
                 sock.add(self.network.uid)
                 sock.add(self.network.select_uid)
                 sock.send()
@@ -595,11 +617,11 @@ class App(object):
         menubar.add_cascade(label="Connections", menu=self.filemenu)
         
         self.editmenu = Menu(menubar, tearoff=0)
-        self.editmenu.add_command(label="Change Name", command=self.callback.donothing)
+        self.editmenu.add_command(label="Change Name", command=lambda: self.callback.window_enter(self, 3))
         menubar.add_cascade(label="Settings", menu=self.editmenu)
 
         helpmenu = Menu(menubar, tearoff=0)
-        helpmenu.add_command(label="Check for Update", command=lambda: self.callback.window_enterpw(self))
+        helpmenu.add_command(label="Check for Update", command=lambda: self.callback.window_update(self))
         helpmenu.add_command(label="About PyChat", command=self.callback.window_about)
         menubar.add_cascade(label="Help", menu=helpmenu)
 
@@ -680,17 +702,17 @@ class App(object):
         #    listbox2.insert(END, "      User "+str(i))
 
         #listbox2.delete(0, END)
-        self.button2 = Button(frame5, command=lambda : self.callback.pm(self), text="Private Message", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        self.button2 = Button(frame5, command=lambda: self.callback.pm(self), text="Private Message", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
         self.button2.grid(row=2, column=0)
-        self.button3 = Button(frame5, command=lambda : self.callback.kick(self), text="Kick", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        self.button3 = Button(frame5, command=lambda: self.callback.kick(self), text="Kick", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
         self.button3.grid(row=3, column=0)
-        self.button4 = Button(frame5, command=lambda : self.callback.owner(self), text="Set Owner", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        self.button4 = Button(frame5, command=lambda: self.callback.owner(self), text="Set Owner", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
         self.button4.grid(row=4, column=0)
-        self.button5 = Button(frame5, command=lambda : self.callback.rm_chname(self), text="Change Room Name", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        self.button5 = Button(frame5, command=lambda: self.callback.window_enter(self, 1), text="Change Room Name", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
         self.button5.grid(row=5, column=0)
-        self.button6 = Button(frame5, command=lambda : self.callback.rm_chpass(self), text="Change Room Password", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        self.button6 = Button(frame5, command=lambda: self.callback.window_enter(self, 2), text="Change Room Password", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
         self.button6.grid(row=6, column=0)
-        self.button7 = Button(frame5, command=lambda : self.callback.rm_exit(self), text="Exit Room", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
+        self.button7 = Button(frame5, command=lambda: self.callback.rm_exit(self), text="Exit Room", bd=0, state=DISABLED, font=("Helvetica Neue", 14), width=24, fg='#4D89C1', bg='white', anchor=N, justify=CENTER, padx=5, pady=1)
         self.button7.grid(row=7, column=0)
 
     def log_servermessage(self):
@@ -761,3 +783,4 @@ class App(object):
 
 if __name__ == "__main__":
     App()
+        

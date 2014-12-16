@@ -7,6 +7,7 @@ PyChat Server
 from socket import *
 from thread import *
 from time import *
+import re
 import os
 
 #SETTINGS
@@ -74,7 +75,7 @@ class Sock(object):
         try:
             user[i].sock.send(self.data[:len(self.data)-4])
         except:
-            user[i].used = 0
+            user_clear(i)
             #check room empty
 
     def sendall(self):
@@ -94,6 +95,18 @@ class Sock(object):
 
 
 #MISC FUNC.
+def user_clear(uid):
+    rid = user[uid].room
+    user[uid].used = 0
+    if user[uid].room != -1:
+        sock.clear()
+        sock.add("rm_deluser")
+        sock.add(uid)
+        sock.sendroom_other(user[uid].room, uid)
+        user[uid].room = -1
+        if room[rid].owner == uid:
+            auto_owner(uid, rid)
+
 def u_send(i, data):
     try:
         user[i].sock.send("[:pack:]"+data)
@@ -149,12 +162,44 @@ def sendmessage(text="", uid=-1):
     if uid != -1:
         sock.send(uid)
 
+def sendmessageroom(text="", rid=-1):
+    if rid != -1:
+        for i in xrange(MAX_USER):
+            if user[i].used == 1 and user[i].room == rid    :
+                sendmessage(text, i)
+
+def sendmessageall(text=""):
+    for i in xrange(MAX_USER):
+        if user[i].used == 1:
+            sendmessage(text, i)
+
 def idn(uid):
     return "("+str(uid)+")"
 
+def auto_owner(uid, rid):
+    for i in xrange(MAX_USER):
+        if user[i].room == rid and i != uid:
+            room[rid].owner = i
+            sock.clear()
+            sock.add("rm_chowner")
+            sock.add("")
+            sock.add("")
+            sock.add(i)
+            sock.add(user[i].name)
+            sock.sendroom_other(user[uid].room, uid)
+            new_owner = 1
+            return
+    room[rid].used = 0
+
+def replace_ex(text, old, new):
+    text = re.compile(re.escape(old), re.IGNORECASE)
+    text.sub(new, text)
+    return text
+
 def filter_badword(text):
     for i in server_badword:
-        text = text.replace(i, len(i)*"*")
+        text = text.replace(i, len(i)*'*')
+        #text = replace_ex(text, i, len(i)*'*')
     return text
 
 #MAIN SERVER LOGIC
@@ -278,6 +323,9 @@ def response(conn):
 
                 user[uid].room = rid
                 sock.clear()
+                sock.add("play_join")
+                sock.sendroom_other(user[uid].room, uid)
+                sock.clear()
                 sock.add("rm_join")
                 sock.add(rid)
                 sock.add(room[rid].owner)
@@ -285,7 +333,7 @@ def response(conn):
                 sock.add("rm_list")
                 for i in xrange(MAX_USER):
                     if user[i].room == rid:
-                        print user[i].name
+                        #print user[i].name
                         sock.add(i)
                         sock.add(user[i].name)
                 sock.send(uid)
@@ -305,22 +353,11 @@ def response(conn):
                 sock.add("rm_deluser")
                 sock.add(uid)
                 sock.sendroom_other(rid, uid)
+                sock.clear()
+                sock.add("play_exit")
+                sock.sendroom_other(user[uid].room, uid)
                 if int(uid) == int(room[rid].owner):
-                    new_owner = 0
-                    for i in xrange(MAX_USER):
-                        if user[i].room == rid and i != uid:
-                            room[rid].owner = i
-                            sock.clear()
-                            sock.add("rm_chowner")
-                            sock.add("")
-                            sock.add("")
-                            sock.add(i)
-                            sock.add(user[i].name)
-                            sock.sendroom_other(user[uid].room, uid)
-                            new_owner = 1
-                            break
-                    if new_owner == 0:
-                        room[rid].used = 0
+                    auto_owner(uid, rid)
                 user[uid].room = -1
 
             if data[0] == "rm_chowner":
@@ -340,7 +377,8 @@ def response(conn):
 
             if data[0] == "exc":
                 uid = int(data[1])
-                
+                rid = user[uid].room
+
                 if data[2] == "help":
                     sendmessage("/example1", uid)
                     sendmessage("/example2", uid)
@@ -357,8 +395,43 @@ def response(conn):
                 elif data[2] == "pm":
                     oid = int(data[3])
                     if data[4] != "":
-                        sendmessage("[FROM "+user[uid].name+"] "+data[4], oid)
+                        tmp = ' '.join(data[4:])
+                        sendmessage("[FROM "+user[uid].name+"] "+tmp, oid)
+                        sock.clear()
+                        sock.add("play_pm")
+                        sock.send(oid)
 
+                elif data[2] == "room":
+                    if data[3] == "name":
+                        if room[rid].owner == uid:
+                            tmp = ' '.join(data[4:])
+                            room[rid].name = tmp
+                            sock.clear()
+                            sock.add("rm_rename")
+                            sock.add(tmp)
+                            sock.sendroom(rid)
+                            sendmessageroom(user[uid].name + " change room name to " + tmp + ".", rid)
+                        
+                    elif data[3] == "password":
+                        if room[rid].owner == uid:
+                            tmp = ' '.join(data[4:])
+                            room[rid].password = tmp
+                            sendmessageroom(user[uid].name + " change room password to " + tmp + ".", rid)
+
+                elif data[2] == "user":
+                    if data[3] == "nickname":
+                        tmp = ' '.join(data[4:])
+                        user[uid].name = tmp
+                        sock.clear()
+                        sock.add("nickname")
+                        sock.add(uid)
+                        sock.add(tmp)
+                        if rid != -1:
+                            sock.sendroom(rid)
+                            sendmessageroom(user[uid].name + " change nickname to " + tmp + ".", rid)
+                        else:
+                            sock.send(rid)
+                        
                 else:
                     sendmessage("Server Unknown Command: /"+data[2], uid)
 
@@ -396,7 +469,6 @@ def server():
         for i in f:
             server_badword.append(i.replace("\n", ""))
         f.close()
-    print server_badword
 
     s = socket(AF_INET, SOCK_STREAM)
     s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
