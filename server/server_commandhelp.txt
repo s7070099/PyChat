@@ -1,4 +1,5 @@
 [User Command]
+/clear - clear chatlog.
 /pm [id] [message] - send private message.
 /user nickname [new_nickname] - change nickname.
 
