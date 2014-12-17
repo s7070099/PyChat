@@ -14,6 +14,7 @@ In the Server Folder to include the necessary files.
 **PORT** server port.<br>
 **MAX_USER** server max user.<br>
 **MAX_ROOM** server max room.<br>
+**SERVER_LOG** server logging save filename. (emtpy if no logging save)<br>
 **SERVER_MSG** server welcome message file.<br>
 **SERVER_BAN** server ban list file.<br>
 **SERVER_BADWORD** server badword list file.<br>
