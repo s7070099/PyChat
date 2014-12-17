@@ -10,11 +10,14 @@ from time import time, sleep
 from Tkinter import *
 from uuid import getnode
 import tkMessageBox, sys, os
-from winsound import PlaySound as play
+
+try:
+    from winsound import PlaySound as play
+except:
+    print "Program is running without sound."
 
 VERSION = 1.0
-DEBUG = 1
-#os.system('c:\python27\python server.py')
+DEBUG = 0
 
 class App(object):
     '''PyChat Application'''
