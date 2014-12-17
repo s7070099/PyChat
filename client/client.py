@@ -641,7 +641,7 @@ class App(object):
         menubar.add_cascade(label="Settings", menu=self.editmenu)
 
         helpmenu = Menu(menubar, tearoff=0)
-        helpmenu.add_command(label="Check for Update", command=lambda: self.callback.window_update(self))
+        #helpmenu.add_command(label="Check for Update", command=lambda: self.callback.window_update(self))
         helpmenu.add_command(label="About PyChat", command=self.callback.window_about)
         menubar.add_cascade(label="Help", menu=helpmenu)
 

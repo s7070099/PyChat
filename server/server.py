@@ -467,14 +467,14 @@ def response(conn):
                     if user[uid].admin > 0:   
                         if data[3] == "ip":
                             ip = data[4]
-                            server_ban.append(user[oid].ip)
+                            server_ban.append(ip)
                             f = open(SERVER_BAN, 'a')
-                            f.write(user[oid].ip)
+                            f.write(ip)
                             f.close()
                             for i in xrange(MAX_USER):
                                 if user[i].ip == ip:
                                     ban(i)
-                                    print log(), user[uid].name+"("+str(uid)+")", "ban", user[oid].name+"("+str(oid)+"). (IP BAN)"
+                                    print log(), user[uid].name+"("+str(uid)+")", "ban", user[i].name+"("+str(i)+"). (IP BAN)"
                         else:
                             oid = int(data[3])
                             if user[oid].used == 1:
