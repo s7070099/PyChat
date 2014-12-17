@@ -7,14 +7,14 @@ PyChat Server 1.0
 from socket import *
 from thread import *
 from time import *
-import re
-import os
+import re, os, sys
 
 #USER SETTINGS
 HOST = '127.0.0.1'
 PORT =  12345
 MAX_USER = 200
 MAX_ROOM = 16
+SERVER_LOG = 'server_log.txt'
 SERVER_MSG = 'server_msg.txt'
 SERVER_BAN = 'server_ban.txt'
 SERVER_BADWORD = 'server_badword.txt'
@@ -208,8 +208,8 @@ def ban(uid):
     if rid != -1:
         sock.clear()
         sock.add("rm_deluser")
-        sock.add(i)
-        sock.sendroom_other(rid, i)
+        sock.add(uid)
+        sock.sendroom_other(rid, uid)
         if uid == room[rid].owner:
             auto_owner(uid, rid)
 
@@ -546,6 +546,9 @@ def server():
         for i in f:
             server_badword.append(i.replace("\n", ""))
         f.close()
+
+    
+    log_file = open(SERVER_LOG,"a")
 
     s = socket(AF_INET, SOCK_STREAM)
     s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
