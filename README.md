@@ -35,7 +35,7 @@ In the Server Folder to include the necessary files.
 ##Client Side
 Client need to complie before use because security problem.
 
-How to:
+####How to
 1. Go to "Connection > Connect" to open connect window.
 2. Input server ip, port (EXAMPLE 127.0.0.1:12345) and nickname press connect button.
 3. Create room by press create button.
