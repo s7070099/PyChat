@@ -1,3 +1,13 @@
-/example1
-/example2
-/example3
+[User Command]
+/pm [id] [message] - send private message.
+/user nickname [new_nickname] - change nickname.
+
+[Owner Command]
+/room name [new_name] - change room name.
+/room password [new_password] - change room password.
+/kick [id] - kick user in room by id.
+
+[Admin Command]
+/recon password [recon_password] - admin login.
+/ban ip [id] - ban user by ip.
+/ban [id] - ban user by mac address.
