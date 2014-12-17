@@ -3,6 +3,7 @@ PyChat
 > *"send chat and remote command."*
 
 An internet connection is required while running this application.
+
 Open and use immediately, No installation required.
 
 ##Setting Up a Server
@@ -35,6 +36,6 @@ In the Server Folder to include the necessary files.
 Client need to complie before use because security problem.
 
 1. go to "Connection > Connect" to open connect window.
-2. input server ip, port in this format.
-> 127.0.0.1:12345
-and nickname press connect button.
+2. input server ip, port (EXAMPLE 127.0.0.1:12345) and nickname press connect button.
+3. create room by press create button.
+4. enjoy!
