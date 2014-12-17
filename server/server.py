@@ -10,7 +10,7 @@ from time import *
 import re, os, sys
 
 #USER SETTINGS
-HOST = '192.168.100.60'
+HOST = '127.0.0.1'
 PORT =  12345
 MAX_USER = 200
 MAX_ROOM = 16
@@ -105,13 +105,13 @@ def user_clear(uid):
     rid = user[uid].room
     user[uid].used = 0
     if user[uid].room != -1:
+        if room[rid].owner == uid:
+            auto_owner(uid, rid)
         sock.clear()
         sock.add("rm_deluser")
         sock.add(uid)
         sock.sendroom_other(user[uid].room, uid)
         user[uid].room = -1
-        if room[rid].owner == uid:
-            auto_owner(uid, rid)
 
 def u_send(i, data):
     try:
