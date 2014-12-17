@@ -18,7 +18,7 @@ In the Server Folder to include the necessary files.
 **SERVER_BAN** server ban list file.<br>
 **SERVER_BADWORD** server badword list file.<br>
 **SERVER_CMDHELP** server command help file.<br>
-**SERVER_CAPTION** server caption.
+**SERVER_CAPTION** server caption.<br>
 **RECON_PASSWORD** recon password to access admin permission.
 
 - ####server_badword.txt
