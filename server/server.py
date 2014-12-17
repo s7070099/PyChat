@@ -563,7 +563,7 @@ def server():
             sock.clear()
             sock.add("print")
             sock.add("Server IP Banned !")
-            sock.send(i)
+            sock.sendsock(conn)
             print log(), "Refuse Connection %s:%s (Server IP Ban)." % (addr[0], addr[1])
         else:
             serverfull = 1
