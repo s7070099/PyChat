@@ -24,7 +24,7 @@ In the Server Folder to include the necessary files.
 > Badword list, you can config here.
 
 - ####server_ban.txt
-> Ban list, by MAC Address.
+> Ban list, by IP and MAC Address.
 
 - ####server_commandhelp.txt
 > Command help when user use command /help.
