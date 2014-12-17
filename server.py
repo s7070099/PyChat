@@ -176,6 +176,11 @@ def sendmessageall(text=""):
 def idn(uid):
     return "("+str(uid)+")"
 
+def read_by_tokens(fileobj):
+    for line in fileobj:
+        for token in line.split():
+            yield token
+
 def auto_owner(uid, rid):
     for i in xrange(MAX_USER):
         if user[i].room == rid and i != uid:
@@ -266,21 +271,6 @@ def response(conn):
                 uid = int(data[1])
                 user[uid].used = 0
                 print log(), "User", user[uid].name+"("+str(uid)+")", "is disconnected."
-
-            if data[0] == "rm_kick":
-                uid = int(data[1])
-                oid = int(data[2])
-                rid = int(user[uid].room)
-                if uid == room[rid].owner and uid != oid and user[oid].used == 1 and user[oid].room == user[uid].room:
-                    user[oid].room = -1
-                    sock.clear()
-                    sock.add("rm_kick")
-                    sock.send(oid)
-                    sock.clear()
-                    sock.add("rm_deluser")
-                    sock.add(oid)
-                    sock.sendroom(rid)
-                    print log(), "User", user[uid].name+"("+str(uid)+") Kick ", user[oid].name+"("+str(oid)+") from room."
 
             if data[0] == "rm_create" and len(data) == 4:
                 uid = int(data[1])
@@ -424,14 +414,38 @@ def response(conn):
                         user[uid].name = tmp
                         sock.clear()
                         sock.add("nickname")
-                        sock.add(uid)
                         sock.add(tmp)
+                        sock.send(uid)
                         if rid != -1:
+                            sock.clear()
+                            sock.add("rm_deluser")
+                            sock.add(uid)
                             sock.sendroom(rid)
-                            sendmessageroom(user[uid].name + " change nickname to " + tmp + ".", rid)
-                        else:
-                            sock.send(rid)
-                        
+                            sock.clear()
+                            sock.add("rm_adduser")
+                            sock.add(uid)
+                            if room[rid].owner == uid:
+                                tmp += " (owner)"
+                            sock.add(tmp)
+                            sock.sendroom(rid)
+                            sendmessageroom(user[uid].name + " change nickname to " + user[uid].name + ".", rid)
+
+                elif data[2] == "kick":
+                    oid = int(data[3])
+                    if uid == room[rid].owner and uid != oid and user[oid].used == 1 and user[oid].room == user[uid].room:
+                        user[oid].room = -1
+                        sock.clear()
+                        sock.add("rm_kick")
+                        sock.send(oid)
+                        sock.clear()
+                        sock.add("rm_deluser")
+                        sock.add(oid)
+                        sock.sendroom(rid)
+                        print log(), "User", user[uid].name+"("+str(uid)+") Kick ", user[oid].name+"("+str(oid)+") from room."
+
+                elif data[2] == "ban":
+                    oid = int(data[3])
+
                 else:
                     sendmessage("Server Unknown Command: /"+data[2], uid)
 

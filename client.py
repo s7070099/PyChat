@@ -249,7 +249,7 @@ class App(object):
                         self.mainself.chatlabel.config(text=data[1])
 
                     if data[0] == "nickname":
-                        pass
+                        self.nickname = data[1]
 
                     if data[0] == "err":
                         print "Kicked from server. (Socket Error)"
@@ -434,7 +434,8 @@ class App(object):
             #root.mainloop()
 
         def window_update(self, mainself):
-            mainself.callback.window_enter(mainself)
+            mainself.root.destroy()
+            sys.exit()
 
         def window_about(event):
             root = Tk()
@@ -535,8 +536,9 @@ class App(object):
             if self.network.connected == 1 and int(self.network.select_uid) != -1:
                 sock = self.network.netsock
                 sock.clear()
-                sock.add("rm_kick")
+                sock.add("exc")
                 sock.add(self.network.uid)
+                sock.add("kick")
                 sock.add(self.network.select_uid)
                 sock.send()
                 self.network.select_uid = -1
@@ -580,7 +582,7 @@ class App(object):
 
         def rootquit(event, self):
             self.root.destroy()
-            pass
+            sys.exit()
     
     def __init__(self):
         CAPTION = "PyChat v." + str(VERSION)
