@@ -10,11 +10,11 @@ from time import *
 import re, os, sys
 
 #USER SETTINGS
-HOST = '127.0.0.1'
+HOST = '192.168.100.60'
 PORT =  12345
 MAX_USER = 200
 MAX_ROOM = 16
-SERVER_LOG = 'server_log.txt'
+SERVER_LOG = '' #emtpy if no Logging save.
 SERVER_MSG = 'server_msg.txt'
 SERVER_BAN = 'server_ban.txt'
 SERVER_BADWORD = 'server_badword.txt'
@@ -123,6 +123,15 @@ def u_sendall(data):
     for i in xrange(MAX_USER):
         if user[i].used == 1:
             u_send(i, data)
+
+def logging():
+    while 1:
+        server_log = sys.stdout
+        log_file = open(SERVER_LOG,"a")
+        sys.stdout = log_file
+        sleep(1)
+        sys.stdout = server_log
+        log_file.close()
 
 def check_timeout():
     while 1:
@@ -509,8 +518,13 @@ def response(conn):
 #INIT SOCKET, RECEIVER AND INIT VAR.
 def server():
     '''Server Main Program'''
-    print 'PyChat Dedicated Server', VERSION, ""
+
+    if SERVER_LOG != "":
+        print "***START IN LOGGING MODE***"
+        start_new(logging, ())
+        sleep(2)
     
+    print 'PyChat Dedicated Server', VERSION, ""
     print 'Reading server message...'
     global server_message
     server_message = list()
@@ -546,9 +560,6 @@ def server():
         for i in f:
             server_badword.append(i.replace("\n", ""))
         f.close()
-
-    
-    log_file = open(SERVER_LOG,"a")
 
     s = socket(AF_INET, SOCK_STREAM)
     s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
