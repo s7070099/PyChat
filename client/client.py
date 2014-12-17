@@ -2,7 +2,7 @@
 #-*-coding: tis-620 -*-
 
 '''
-PyChat Client
+PyChat Client 1.0
 '''
 from socket import *
 from thread import *
@@ -12,13 +12,19 @@ from uuid import getnode
 import tkMessageBox, sys, os
 from winsound import PlaySound as play
 
-VERSION = 0.3
+VERSION = 1.0
 DEBUG = 1
 #os.system('c:\python27\python server.py')
 
 class App(object):
+    '''PyChat Application'''
+    
     class Network(object):
+        '''Network system for PyChat'''
+        
         class Sock(object):
+            '''Sock data stracture for Network system'''
+
             def __init__(self, sock):
                 self.sock = sock
                 self.data = "[:pack:]"
@@ -251,12 +257,22 @@ class App(object):
                     if data[0] == "nickname":
                         self.nickname = data[1]
 
+                    if data[0] == "ban":
+                        self.rid = -1
+                        self.rhost = -1
+                        self.select_uid = -1
+                        self.mainself.user.delete(0, END)
+                        self.close()
+                        self.mainself.log("You are banned from server.", 1)
+
                     if data[0] == "err":
                         print "Kicked from server. (Socket Error)"
                         self.close()
                     
 
     class ConnectWindow(object):
+        '''Connect window class'''
+
         def __init__(self, mainself):
             CAPTION = "Connect"
             
@@ -320,6 +336,8 @@ class App(object):
 
 
     class Callback(object):
+        '''All Callback'''
+
         def window_connect(self, mainself):
             mainself.window_connect = mainself.ConnectWindow(mainself)
 
@@ -360,7 +378,7 @@ class App(object):
             root.mainloop()
 
         def window_enter(self, mainself, mode=0):
-            def join_room():
+            def join_room(event=0):
                 sock = mainself.network.netsock
                 sock.clear()
                 sock.add("rm_request")
@@ -370,7 +388,7 @@ class App(object):
                 sock.send()
                 root.destroy()
 
-            def ch_name():
+            def ch_name(event=0):
                 sock = mainself.network.netsock
                 sock.clear()
                 sock.add("exc")
@@ -381,7 +399,7 @@ class App(object):
                 sock.send()
                 root.destroy()
 
-            def ch_password():
+            def ch_password(event=0):
                 sock = mainself.network.netsock
                 sock.clear()
                 sock.add("exc")
@@ -392,7 +410,7 @@ class App(object):
                 sock.send()
                 root.destroy()
 
-            def ch_nickname():
+            def ch_nickname(event=0):
                 sock = mainself.network.netsock
                 sock.clear()
                 sock.add("exc")
@@ -674,7 +692,7 @@ class App(object):
         frame_chat.grid(row=1, column=0)
         scrollbar2 = Scrollbar(frame_chat)
         scrollbar2.pack(side=RIGHT, fill=Y)
-        self.chatlog = Text(frame_chat, width=82,height=33, bd=0, padx=20, pady=5, font=("Helvetica Neue", 11))
+        self.chatlog = Text(frame_chat, width=82,height=35, bd=0, padx=20, pady=5, font=("Monaco", 10))
         self.chatlog.pack(side=RIGHT)
         self.chatlog.config(yscrollcommand=scrollbar2.set)
 

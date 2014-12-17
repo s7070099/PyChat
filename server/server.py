@@ -2,7 +2,7 @@
 #-*-coding: tis-620 -*-
 
 '''
-PyChat Server
+PyChat Server 1.0
 '''
 from socket import *
 from thread import *
@@ -10,8 +10,7 @@ from time import *
 import re
 import os
 
-#SETTINGS
-VERSION = 0.3
+#USER SETTINGS
 HOST = '127.0.0.1'
 PORT =  12345
 MAX_USER = 200
@@ -19,12 +18,19 @@ MAX_ROOM = 16
 SERVER_MSG = 'server_msg.txt'
 SERVER_BAN = 'server_ban.txt'
 SERVER_BADWORD = 'server_badword.txt'
+SERVER_CMDHELP = 'server_commandhelp.txt'
 SERVER_CAPTION = 'Welcome to Teruyo Server'
+RECON_PASSWORD = "123456"
+
+#DEVELOPER SETTINGS
+VERSION = 1.0
 DEBUG = 0
 
 #INIT DATA STRUCTURE
 class User(object):
+    '''User Data Class'''
     used = 0
+    ip = ""
     name = ""
     room = -1
     macaddr = ""
@@ -176,11 +182,6 @@ def sendmessageall(text=""):
 def idn(uid):
     return "("+str(uid)+")"
 
-def read_by_tokens(fileobj):
-    for line in fileobj:
-        for token in line.split():
-            yield token
-
 def auto_owner(uid, rid):
     for i in xrange(MAX_USER):
         if user[i].room == rid and i != uid:
@@ -195,6 +196,22 @@ def auto_owner(uid, rid):
             new_owner = 1
             return
     room[rid].used = 0
+
+def is_banned(text):
+    return str(text) in server_ban
+
+def ban(uid):
+    rid = int(user[uid].room)
+    sock.clear()
+    sock.add("ban")
+    sock.send(uid)
+    if rid != -1:
+        sock.clear()
+        sock.add("rm_deluser")
+        sock.add(i)
+        sock.sendroom_other(rid, i)
+        if uid == room[rid].owner:
+            auto_owner(uid, rid)
 
 def replace_ex(text, old, new):
     text = re.compile(re.escape(old), re.IGNORECASE)
@@ -225,31 +242,37 @@ def response(conn):
                 uid = int(data[1])
                 user[uid].name = data[2]
                 user[uid].macaddr = data[3]
-                print log(), "User", data[2]+"("+str(uid)+")", "is connected."
+                if is_banned(data[3]):
+                    sock.clear()
+                    sock.add("ban")
+                    sock.send(uid)
+                    print log(), "User", data[2]+"("+str(uid)+")", "was kick from server. (Server Ban)"
+                else:
+                    print log(), "User", data[2]+"("+str(uid)+")", "is connected."
 
-                #Send server message to client.
-                sock.clear()
-                sock.add("sv_msg")
-                sock.add(SERVER_CAPTION)
-                count = 0
-                for i in server_message:
-                    if count < 2048:
-                        count += len(i)
-                        sock.add(i)
-                    else:
-                        count = 0
-                        sock.send(uid)
-                        sock.clear()
-                        sock.add("sv_msg_add")
-                sock.send(uid)
-                
-                sock.clear()
-                sock.add("rm_list")
-                for i in xrange(MAX_ROOM):
-                    if room[i].used == 1:
-                        sock.add(i)
-                        sock.add(room[i].name)
-                sock.send(uid)
+                    #Send server message to client.
+                    sock.clear()
+                    sock.add("sv_msg")
+                    sock.add(SERVER_CAPTION)
+                    count = 0
+                    for i in server_message:
+                        if count < 2048:
+                            count += len(i)
+                            sock.add(i)
+                        else:
+                            count = 0
+                            sock.send(uid)
+                            sock.clear()
+                            sock.add("sv_msg_add")
+                    sock.send(uid)
+                    
+                    sock.clear()
+                    sock.add("rm_list")
+                    for i in xrange(MAX_ROOM):
+                        if room[i].used == 1:
+                            sock.add(i)
+                            sock.add(room[i].name)
+                    sock.send(uid)
 
             if data[0] == "chn" and len(data) == 4:
                 uid = int(data[1])
@@ -274,22 +297,28 @@ def response(conn):
 
             if data[0] == "rm_create" and len(data) == 4:
                 uid = int(data[1])
-                for i in xrange(MAX_ROOM):
-                    if room[i].used == 0:
-                        room[i].used = 1
-                        room[i].name = data[2]
-                        room[i].password = data[3]
-                        room[i].owner = uid
-                        user[uid].room = i
-                        sock.clear()
-                        sock.add("rm_join")
-                        sock.add(i)
-                        sock.add(uid)
-                        sock.add(data[2])
-                        sock.send(uid)
-                        sendmessage("Type /help for command list.", uid)
-                        print log(), "User", user[uid].name+"("+str(uid)+")", "Create Room", "[",room[i].name,"]" , "[", i,"]"
-                        break
+                if getroom() < MAX_ROOM:
+                    for i in xrange(MAX_ROOM):
+                        if room[i].used == 0:
+                            room[i].used = 1
+                            room[i].name = data[2]
+                            room[i].password = data[3]
+                            room[i].owner = uid
+                            user[uid].room = i
+                            sock.clear()
+                            sock.add("rm_join")
+                            sock.add(i)
+                            sock.add(uid)
+                            sock.add(data[2])
+                            sock.send(uid)
+                            sendmessage("Type /help for command list.", uid)
+                            print log(), "User", user[uid].name+"("+str(uid)+")", "Create Room", "[",room[i].name,"]" , "[", i,"]"
+                            break
+                else:
+                    sock.clear()
+                    sock.add("print")
+                    sock.add("Exceeds max room limit!")
+                    sock.send(uid)
 
             if data[0] == "rm_request":
                 uid = int(data[1])
@@ -370,17 +399,8 @@ def response(conn):
                 rid = user[uid].room
 
                 if data[2] == "help":
-                    sendmessage("/example1", uid)
-                    sendmessage("/example2", uid)
-                    sendmessage("/example3", uid)
-
-                elif data[2] == "ban":
-                    oid = int(data[3])
-                    if user[uid].admin > 0:
-                        with open(SERVER_BAN, "a") as f:
-                            f.writeline(user[oid].macaddr)
-                    else:
-                        sendmessage("Permission Denied!", uid)
+                    for i in server_cmdhelp:
+                        sendmessage(i, uid)
 
                 elif data[2] == "pm":
                     oid = int(data[3])
@@ -430,7 +450,7 @@ def response(conn):
                             sock.sendroom(rid)
                             sendmessageroom(user[uid].name + " change nickname to " + user[uid].name + ".", rid)
 
-                elif data[2] == "kick":
+                elif data[2] == "kick" and len(data) > 3:
                     oid = int(data[3])
                     if uid == room[rid].owner and uid != oid and user[oid].used == 1 and user[oid].room == user[uid].room:
                         user[oid].room = -1
@@ -443,8 +463,41 @@ def response(conn):
                         sock.sendroom(rid)
                         print log(), "User", user[uid].name+"("+str(uid)+") Kick ", user[oid].name+"("+str(oid)+") from room."
 
-                elif data[2] == "ban":
-                    oid = int(data[3])
+                elif data[2] == "ban" and len(data) > 3:
+                    if user[uid].admin > 0:   
+                        if data[3] == "ip":
+                            ip = data[4]
+                            server_ban.append(user[oid].ip)
+                            f = open(SERVER_BAN, 'a')
+                            f.write(user[oid].ip)
+                            f.close()
+                            for i in xrange(MAX_USER):
+                                if user[i].ip == ip:
+                                    ban(i)
+                                    print log(), user[uid].name+"("+str(uid)+")", "ban", user[oid].name+"("+str(oid)+"). (IP BAN)"
+                        else:
+                            oid = int(data[3])
+                            if user[oid].used == 1:
+                                server_ban.append(user[oid].macaddr)
+                                f = open(SERVER_BAN, 'a')
+                                f.write(user[oid].macaddr)
+                                f.close()
+                                for i in xrange(MAX_USER):
+                                    if user[i].macaddr == user[oid].macaddr:
+                                        ban(i)
+                                        print log(), user[uid].name+"("+str(uid)+")", "ban", user[oid].name+"("+str(oid)+"). (MAC BAN)"
+                    else:
+                        sendmessage("Permission Denied!", uid)
+
+                elif data[2] == "recon" and len(data) > 4:
+                    if data[3] == "password":
+                        if data[4] == RECON_PASSWORD:
+                            user[uid].admin = 1
+                            print log(), user[uid].name+"("+str(uid)+")", "Access Admin Permission."
+                            sock.clear()
+                            sock.add("print")
+                            sock.add("Permission Granted.")
+                            sock.send(uid)
 
                 else:
                     sendmessage("Server Unknown Command: /"+data[2], uid)
@@ -455,6 +508,7 @@ def response(conn):
 
 #INIT SOCKET, RECEIVER AND INIT VAR.
 def server():
+    '''Server Main Program'''
     print 'PyChat Dedicated Server', VERSION, ""
     
     print 'Reading server message...'
@@ -464,6 +518,15 @@ def server():
         f = open(SERVER_MSG)
         for i in f:
             server_message.append(i)
+        f.close()
+
+    print 'Reading server command help...'
+    global server_cmdhelp
+    server_cmdhelp = list()
+    if os.path.isfile(SERVER_CMDHELP):
+        f = open(SERVER_CMDHELP)
+        for i in f:
+            server_cmdhelp.append(i.replace("\n", ""))
         f.close()
 
     print 'Reading server ban list...'
@@ -496,20 +559,31 @@ def server():
     while 1:
         conn, addr = s.accept()
         print log(), 'Incomming Connection %s:%s...' % (addr[0], addr[1])
-        serverfull = 1
-        for i in xrange(MAX_USER):
-            if user[i].used == 0:
-                start_new(response, (conn,))
-                user[i].used = 1
-                user[i].sock = conn
-                sock.clear()
-                sock.add("new")
-                sock.add(i)
-                sock.send(i)
-                serverfull = 0
-                break
-        if serverfull == 1:
-            conn.send("sv_full")
+        if is_banned(addr[0]):
+            sock.clear()
+            sock.add("print")
+            sock.add("Server IP Banned !")
+            sock.send(i)
+            print log(), "Refuse Connection %s:%s (Server IP Ban)." % (addr[0], addr[1])
+        else:
+            serverfull = 1
+            for i in xrange(MAX_USER):
+                if user[i].used == 0:
+                    start_new(response, (conn,))
+                    user[i].used = 1
+                    user[i].sock = conn
+                    user[i].ip = addr[0]
+                    user[i].room = 0
+                    user[i].admin = 0
+                    user[i].macaddr = ""
+                    sock.clear()
+                    sock.add("new")
+                    sock.add(i)
+                    sock.send(i)
+                    serverfull = 0
+                    break
+            if serverfull == 1:
+                conn.send("sv_full")
 
 if __name__ == "__main__":
     server()

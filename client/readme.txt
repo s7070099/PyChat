@@ -1,22 +1,53 @@
-Steam Client Update Released
+PyChat
 
-An update has been released for the Steam Client and will be automatically downloaded.
+======
 
-Windows
-Fixed a race leading to a rare crash when exiting Steam on Windows
-Improved in-game overlay compatibility with some newer d3d11 games that utilize IDXGIFactory2 (Audiosurf 2)
+An internet connection is required while running this application.
 
-Mac OS X
-Fixed the TAB key not working correctly in Web forms 
-Retina display graphics improved (Checkboxes and radio buttons)
 
-Linux
-Fixed web views not displaying if you run Steam under multiple OS user accounts
 
-In-Home Streaming
-Fixed a regression preventing the stream from stopping when a game exits
-Fixed flickering on NVIDIA SLI host configurations
+Setting Up a Server
 
-UGC
-Fixed crash when updating a Workshop item using the ISteamUGC interface with a NULL change description
-Cached retrieved guides displayed in the overlay
+	In the Server Folder to include the necessary files.
+
+	- server.py
+
+		PyChat server python file.
+		HOST - server ip.
+		PORT - server port.
+		MAX_USER - server max user.
+		MAX_ROOM - server max room.
+		SERVER_MSG - server welcome message file.
+		SERVER_BAN - server ban list file.
+		SERVER_BADWORD - server badword list file.
+		SERVER_CMDHELP - server command help file.
+		SERVER_CAPTION - server caption.
+
+	- server_badword.txt
+
+		Badword list, you can config here.
+
+
+
+	- server_ban.txt
+		Ban list, by IP and MAC Address.
+	
+	- server_commandhelp.txt
+		Command help when user use command /help.
+	
+	- server_msg.txt
+		Server welcome message when user connected.
+
+Client Side
+	
+Client need to complie before use because security problem.
+
+		How to
+
+		1. Go to "Connection > Connect" to open connect window.
+		
+2. Input server ip, port (EXAMPLE 127.0.0.1:12345) and nickname press connect button.
+		
+3. Create room by press create button.
+		
+4. Enjoy!

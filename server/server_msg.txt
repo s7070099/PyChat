@@ -11,6 +11,3 @@ MMMMMMMMMM
                                           d'               
                                       (8),P                
                                        YMM   
-
-[COMMAND]
-/pm [id] [message] - Private Message
