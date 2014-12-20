@@ -132,6 +132,10 @@ class App(object):
                 if owner == 1:
                     tmp_text += " (Owner)"
                 return tmp_text
+
+            def name_color(idx, pos):
+                if idx == self.uid:
+                    self.mainself.user.itemconfig(pos, fg='blue')
             
             sock = self.Sock(conn)
             while True:
@@ -226,11 +230,13 @@ class App(object):
                         else:
                             self.userlist.append(int(self.uid))
                             self.mainself.user.insert(END, user_text(self.uid, self.nickname, 1))
+                            name_color(self.uid, END)
 
                     if data[0] == "rm_adduser":
                         tmp_text = user_text(data[1], data[2], 0)
                         self.mainself.user.insert(END, tmp_text)
                         self.userlist.append(int(data[1]))
+                        name_color(data[1], END)
 
                     if data[0] == "rm_deluser":
                         self.mainself.user.delete(self.userlist.index(int(data[1])))
@@ -241,10 +247,12 @@ class App(object):
                             idx = self.userlist.index(int(data[1]))
                             self.mainself.user.delete(idx)
                             self.mainself.user.insert(idx, user_text(data[1], data[2], 0))
+                            name_color(data[1], idx)
                         self.rhost = data[3]
                         idx = self.userlist.index(int(data[3]))
                         self.mainself.user.delete(idx)
                         self.mainself.user.insert(idx, user_text(data[3], data[4], 1))
+                        name_color(data[3], idx)
 
                     if data[0] == "rm_kick":
                         self.rid = -1
