@@ -757,9 +757,56 @@ class App(object):
 
     def log(self, text, newline=0):
         self.chatlog.config(state=NORMAL)
-        self.chatlog.insert(END, text+"\n")
-        self.chatlog.config(state=DISABLED)
+
+        #TEXT COLOR INIT
+        line_y = str(int(self.chatlog.index('end').split(".")[0])-1)
+        start = list()
+        color = list()
+        mode = list()
+
+        #TEXT COLOR TAG FETCHING
+        i = 0
+        idx = 0
+        new_text = ""
+        while 1:
+            if i+8 < len(text):
+                if text[i] == "{" and text[i+1] == ":" and text[i+8] == "}":
+                    start.append(idx)
+                    color.append("#"+text[i+2:i+8])
+                    mode.append(0)
+                    i = i+9
+
+            if i+7 < len(text):
+                if text[i] == "{" and text[i+7] == "}":
+                    start.append(idx)
+                    color.append("#"+text[i+1:i+7])
+                    mode.append(1)
+                    i = i+8
+
+            if i >= len(text):
+                break
+            else:
+                new_text += text[i]
+                idx += 1
+                i += 1
+
+        #TEXT COLOR APPLY TAG
+        self.chatlog.insert(END, new_text+"\n")
+        for i in xrange(len(start)):
+            if i < len(start)-1:
+                tagname = "[tag "+str(line_y)+" "+str(start[i+1])+"]"
+                self.chatlog.tag_add(tagname, "%s.%s" % (line_y, start[i]), "%s.%s" % (line_y, start[i+1]))
+            else:
+                tagname = "[tag "+str(line_y)+" END]"
+                self.chatlog.tag_add(tagname, "%s.%s" % (line_y, start[i]), "%s.%s" % (line_y, END))
+            if mode[i] == 0:
+                self.chatlog.tag_config(tagname, background=color[i])
+            else:
+                self.chatlog.tag_config(tagname, foreground=color[i])
+            #print tagname, "%s.%s" % (line_idx, edx), "%s.%s" % (line_idx, idx-1)
+        
         if newline: self.chatlog.yview(END)
+        self.chatlog.config(state=DISABLED)
 
     def check_gui_state(self):
         while True:
