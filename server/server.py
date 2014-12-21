@@ -6,10 +6,12 @@ PyChat Server 1.0
 '''
 from socket import *
 from thread import *
+from layer import *
 from time import *
 import re, os, sys
+import importlib
 
-#USER SETTINGS
+#SETTINGS
 HOST = '127.0.0.1'
 PORT =  12345
 MAX_USER = 200
@@ -21,10 +23,12 @@ SERVER_BADWORD = 'server_badword.txt'
 SERVER_CMDHELP = 'server_commandhelp.txt'
 SERVER_CAPTION = 'Welcome to Teruyo Server'
 RECON_PASSWORD = "123456"
-
-#DEVELOPER SETTINGS
 VERSION = 1.0
 DEBUG = 0
+
+#MOD SETTINGS
+def mod_load():
+    mod_add("antiflood")
 
 #INIT DATA STRUCTURE
 class User(object):
@@ -99,6 +103,31 @@ class Sock(object):
             if user[i].used == 1 and int(user[i].room) == int(rid) and i != int(uid):
                 self.send(i)
 
+#MOD SYSTEM FUNC
+mod = list()
+mod_list = list()
+def mod_add(mod_name):
+    '''
+    mod_list.append(mod_name)
+    '''
+    pass
+
+def mod_call(data):
+    '''
+    for i in mod:
+        i.call(data)
+    '''
+    pass
+
+def mod_init():
+    mod_load()
+    '''
+    sys.path.append(sys.path[0] + "\mod")
+    mod = map(__import__, mod_list)
+    for i in mod:
+        i.init(sys.path[0])
+    '''
+    pass
 
 #MISC FUNC.
 def user_clear(uid):
@@ -247,6 +276,8 @@ def response(conn):
             data = i.split("::::")
             if DEBUG: print data
 
+            #mod_call(data, user, room)
+
             if data[0] == "new" and len(data) == 4:
                 uid = int(data[1])
                 user[uid].name = data[2]
@@ -320,7 +351,7 @@ def response(conn):
                             sock.add(uid)
                             sock.add(data[2])
                             sock.send(uid)
-                            sendmessage("Type /help for command list.", uid)
+                            sendmessage("Type /help for command list.\n", uid)
                             print log(), "User", user[uid].name+"("+str(uid)+")", "Create Room", "[",room[i].name,"]" , "[", i,"]"
                             break
                 else:
@@ -408,8 +439,12 @@ def response(conn):
                 rid = user[uid].room
 
                 if data[2] == "help":
-                    for i in server_cmdhelp:
+                    layer1 = Layer(64, 16, " ", "F8E0F7")
+                    layer1.text_ex(1, 1, "HELP", " ", "F781F3")
+                    for i in layer1.getdraw():
                         sendmessage(i, uid)
+                    for i in server_cmdhelp:
+                        sendmessage("{4D89C1}"+i, uid)
 
                 elif data[2] == "pm":
                     oid = int(data[3])
@@ -561,11 +596,14 @@ def server():
             server_badword.append(i.replace("\n", ""))
         f.close()
 
+    print 'Initailizing Mod...'
+    mod_init()
+
     s = socket(AF_INET, SOCK_STREAM)
     s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     s.bind((HOST, PORT))
     s.listen(1)
-    print 'Server is starting on %s:%s\n' % (HOST, PORT), '\n'
+    print 'Server is starting on %s:%s\n' % (HOST, PORT)
     global sock
     sock = Sock(s)
     
